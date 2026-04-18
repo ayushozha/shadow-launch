@@ -1,0 +1,530 @@
+{
+  "run_id": "run_2026-04-18_demo-linear-001",
+  "created_at": "2026-04-18T11:42:07Z",
+  "hero_target": "linear",
+  "runtime_seconds": 120,
+  "confidence": 0.655,
+
+  "input": {
+    "product_url": "https://linear.app",
+    "competitor_urls": [
+      "https://www.atlassian.com/software/jira",
+      "https://asana.com"
+    ],
+    "icp_description": "Engineering and product teams at 50 to 500 person B2B SaaS companies shipping weekly. Current tool is Jira or Asana, inherited from earlier leadership. Decision to switch tends to originate with a VP Engineering and survive or die in front of a CFO and a PMO lead."
+  },
+
+  "twin": {
+    "positioning_map": {
+      "linear.app": [
+        "the builder's project tool",
+        "keyboard-first, opinionated defaults",
+        "speed as a design principle",
+        "built by people who ship, for people who ship",
+        "project management as a byproduct of shipping"
+      ],
+      "atlassian.com/software/jira": [
+        "enterprise-grade work management",
+        "configurable for any workflow",
+        "scales to 10,000 person orgs",
+        "audit, compliance, and permissioning depth",
+        "integrated with the Atlassian suite"
+      ],
+      "asana.com": [
+        "work management for everyone, not just engineering",
+        "cross-functional visibility across departments",
+        "goals and OKRs tied directly to tasks",
+        "dashboards and reports for the PMO",
+        "timelines, portfolios, and workload views"
+      ]
+    },
+    "gaps": [
+      "Opinionation as a velocity multiplier. Every competitor sells flexibility. None sell 'fewer decisions.'",
+      "The PMO is the buyer, the engineer is the user. Buyers pick on reporting; end users suffer the configuration tax.",
+      "Keyboard-first is table stakes in IDEs but a differentiator in PM tools. Only Linear has made it an identity.",
+      "Onboarding velocity is unclaimed. Every tool promises power; none benchmark time-to-first-value.",
+      "Engineer trust is the missing KPI. Engineers treat Jira as punishment and Asana as status theater; both get bypassed for Notion and spreadsheets."
+    ],
+    "sources": [
+      {
+        "actor": "website_content_crawler",
+        "status": "ok",
+        "docs_pulled": 342,
+        "elapsed_ms": 8400,
+        "summary": "Pulled product and competitor marketing sites. Extracted 342 pages. Jira site uses the word 'customize' or 'configure' 47 times. Linear uses it 0 times. Asana uses it 12 times, mostly on the enterprise landing page."
+      },
+      {
+        "actor": "google_serp",
+        "status": "ok",
+        "docs_pulled": 180,
+        "elapsed_ms": 3600,
+        "summary": "Queried 'linear vs jira', 'jira alternatives', 'asana for engineers', and 8 related terms. 180 SERP results across 34 publishers. Dominant third-party framing: Linear = speed, Jira = depth, Asana = visibility."
+      },
+      {
+        "actor": "reddit_scraper",
+        "status": "ok",
+        "docs_pulled": 89,
+        "elapsed_ms": 4200,
+        "summary": "Pulled 89 threads across r/ExperiencedDevs, r/ProductManagement, r/SaaS. 3,412 comments analyzed. Top-upvoted sentiment (340+ upvotes): 'Jira is where productivity goes to die. We use it because finance demands the reports.'"
+      },
+      {
+        "actor": "linkedin_jobs",
+        "status": "ok",
+        "docs_pulled": 412,
+        "elapsed_ms": 5100,
+        "summary": "412 job postings mentioning each tool by name. Linear appears in engineer-authored job descriptions 3.1x more often than Jira despite having 8x smaller install base. Atlassian has 12 open 'solutions architect' roles whose job is helping customers configure Jira. Linear has zero such roles."
+      },
+      {
+        "actor": "g2_reviews",
+        "status": "ok",
+        "docs_pulled": 18692,
+        "elapsed_ms": 7300,
+        "summary": "Linear 1,240 reviews, Jira 6,102, Asana 11,350. Sentiment: 68% of positive Linear reviews mention 'fast', 'out of the way', or 'keyboard' in the first sentence; competing tools 11%. 34% of negative Jira reviews cite 'too complex', 'took months to set up', or 'admin overhead'."
+      },
+      {
+        "actor": "x_scraper",
+        "status": "ok",
+        "docs_pulled": 67,
+        "elapsed_ms": 2900,
+        "summary": "67 threads, 2,400+ replies on builder discourse around PM tools. 'Responsiveness' ranks #1 in unprompted praise for Linear. Benchmark thread clocked issue-creation: Linear 1.2s, Jira 8.4s, Asana 4.7s."
+      }
+    ]
+  },
+
+  "wedges": [
+    {
+      "id": "w1",
+      "headline": "Ship Software, Not Tickets",
+      "thesis": "Project management tools were designed for the PMO and retrofitted onto engineering teams. The result: engineers treat tickets as a tax on building. Linear inverts the model. The tool is for the people writing code, and the reporting comes free as a byproduct.",
+      "evidence": [
+        "Reddit r/ExperiencedDevs, 340+ upvotes: 'Jira is where productivity goes to die. We use it because finance demands the reports.'",
+        "G2 Linear reviews: 68% of positive reviews mention 'fast', 'out of the way', or 'keyboard' in the first sentence. Competing tools: 11%.",
+        "LinkedIn Jobs analysis: Linear appears in engineer-authored job posts 3.1x more often than Jira despite 8x smaller install base."
+      ]
+    },
+    {
+      "id": "w2",
+      "headline": "Escape the Configuration Mine",
+      "thesis": "Every competitor sells infinite flexibility. Linear sells fewer decisions. In a category where the average onboarding takes six weeks and the average team abandons half the features, opinionated defaults are a time machine. You set it up once and the tool gets out of the way.",
+      "evidence": [
+        "Website Content Crawler: Jira marketing site mentions 'customize' or 'configure' 47 times across product pages. Linear mentions it 0 times.",
+        "G2 sentiment on Jira reviews: 34% of negative reviews cite 'too complex', 'took months to set up', or 'admin overhead'.",
+        "Atlassian hiring signal: 12 open 'solutions architect' roles whose entire job is helping customers configure Jira. Linear has zero such roles."
+      ]
+    },
+    {
+      "id": "w3",
+      "headline": "Speed as a Product Decision",
+      "thesis": "Linear's speed is not an optimization, it is a philosophy. In a market where every competitor loads like a government website, Linear treats 50ms response time as non-negotiable. Speed is not what the tool does; it is what the tool believes.",
+      "evidence": [
+        "X/Twitter scrape: 2,400+ replies across 67 threads praising Linear's speed. 'Responsiveness' ranks #1 in unprompted praise.",
+        "Linear homepage copy uses 'fast', 'instant', or 'snappy' 23 times. Jira: 3. Asana: 1.",
+        "Reddit benchmark thread: users clocked issue-creation at Linear 1.2s vs Jira 8.4s vs Asana 4.7s."
+      ]
+    }
+  ],
+
+  "deliberation": {
+    "rounds": 1,
+    "jurors": [
+      {
+        "id": "champion",
+        "role": "VP Engineering",
+        "descriptor": "200-person B2B SaaS, shipping weekly",
+        "weight": 0.20,
+        "corpus_size": 14,
+        "corpus_source": "LinkedIn profiles of real VPs Eng in the target ICP, composite only"
+      },
+      {
+        "id": "economic",
+        "role": "Chief Financial Officer",
+        "descriptor": "Same org, signs the PO",
+        "weight": 0.35,
+        "corpus_size": 11,
+        "corpus_source": "LinkedIn profiles of real CFOs in the target ICP, composite only"
+      },
+      {
+        "id": "blocker",
+        "role": "Staff Platform Engineer",
+        "descriptor": "Owns deploy pipeline and the current Jira integration",
+        "weight": 0.25,
+        "corpus_size": 22,
+        "corpus_source": "LinkedIn profiles of real Staff/Principal Platform Engineers, composite only"
+      },
+      {
+        "id": "skeptic",
+        "role": "Head of Program Management Office",
+        "descriptor": "Brought in the current tool two years ago",
+        "weight": 0.20,
+        "corpus_size": 9,
+        "corpus_source": "LinkedIn profiles of real PMO leads, composite only"
+      }
+    ],
+    "reactions": [
+      {
+        "juror_id": "champion",
+        "wedge_id": "w1",
+        "quote": "This is the one I wanted someone to write. My engineers bypass our PM tool for Notion. If a tool is built for them, I stop losing hours to shadow process.",
+        "score": 0.82,
+        "top_objection": "Need proof this survives contact with an enterprise procurement cycle, not just a 50-person team."
+      },
+      {
+        "juror_id": "champion",
+        "wedge_id": "w2",
+        "quote": "Honest answer: fewer decisions is what I actually need. Our Jira instance has 47 custom fields and no one remembers adding half of them.",
+        "score": 0.88,
+        "top_objection": "Opinionated defaults are great at 50 engineers. I need to see they still hold at 300."
+      },
+      {
+        "juror_id": "champion",
+        "wedge_id": "w3",
+        "quote": "Speed is real. But it is a feature, not a thesis. If I pitch this upstairs I need a sharper argument than 'it feels fast.'",
+        "score": 0.42,
+        "top_objection": "Hard to defend speed as a standalone reason to change vendors."
+      },
+      {
+        "juror_id": "economic",
+        "wedge_id": "w1",
+        "quote": "The reporting-as-byproduct framing is right for my peers. But I need a payback story. When does this pay for itself versus what we already have?",
+        "score": 0.44,
+        "top_objection": "No dollar figure. I cannot approve a switch without a payback period."
+      },
+      {
+        "juror_id": "economic",
+        "wedge_id": "w2",
+        "quote": "This is the one that survives the budget review. 'We spent six months configuring a tool' is a line item I can kill. I can write that check.",
+        "score": 0.81,
+        "top_objection": "Qualitative benefit. Need a time-to-value benchmark (weeks saved versus Jira setup) to defend it in the budget meeting."
+      },
+      {
+        "juror_id": "economic",
+        "wedge_id": "w3",
+        "quote": "Fast does not convert a finance committee. It is a feature of the product, not a reason to switch vendors mid-contract.",
+        "score": -0.05,
+        "top_objection": "Speed has no cost lever attached to it. Not a finance-grade argument."
+      },
+      {
+        "juror_id": "blocker",
+        "wedge_id": "w1",
+        "quote": "I agree in principle. But my platform team integrates with Jira's API today for deploy gates. Migration is a six-month project I cannot prioritize this year.",
+        "score": 0.18,
+        "top_objection": "Migration cost is the quiet killer. Nobody is modeling that."
+      },
+      {
+        "juror_id": "blocker",
+        "wedge_id": "w2",
+        "quote": "Configuration pain is real. But opinionated defaults become opinionated cages at 500 engineers. Does this scale past mid-market?",
+        "score": 0.51,
+        "top_objection": "Opinionated defaults become opinionated cages at 500+ engineers. No ceiling data."
+      },
+      {
+        "juror_id": "blocker",
+        "wedge_id": "w3",
+        "quote": "Linear is fast because it is a simpler data model. If we outgrow the model, speed does not save us. Where is the ceiling?",
+        "score": 0.08,
+        "top_objection": "Speed correlates with model simplicity. What happens when we need the complexity back?"
+      },
+      {
+        "juror_id": "skeptic",
+        "wedge_id": "w1",
+        "quote": "Every PM tool has sold 'built for engineers' since 2012. What is different this time?",
+        "score": -0.22,
+        "top_objection": "Framing is familiar. The story has been sold before and rarely stuck."
+      },
+      {
+        "juror_id": "skeptic",
+        "wedge_id": "w2",
+        "quote": "I brought Jira in. If I back this I am reversing a two-year decision publicly. The wedge has to be strong enough to justify that cost.",
+        "score": 0.34,
+        "top_objection": "Political cost of reversing a prior rollout. Needs to be addressed in the pitch, not left unsaid."
+      },
+      {
+        "juror_id": "skeptic",
+        "wedge_id": "w3",
+        "quote": "Speed is a luxury I pay for after correctness. Show me the audit trail and the SOX compliance story before we talk about response time.",
+        "score": -0.31,
+        "top_objection": "No compliance story. For anyone at a public or soon-public company this is a hard stop."
+      }
+    ],
+    "consensus_vector": {
+      "w1": 0.319,
+      "w2": 0.655,
+      "w3": 0.025
+    },
+    "dissent_log": [
+      {
+        "juror_id": "blocker",
+        "wedge_id": "w2",
+        "objection": "Opinionated defaults become opinionated cages at 500+ engineers. No ceiling data.",
+        "severity": "high"
+      },
+      {
+        "juror_id": "skeptic",
+        "wedge_id": "w2",
+        "objection": "Reversing a two-year Jira rollout is politically expensive. Wedge must justify that cost explicitly.",
+        "severity": "medium"
+      },
+      {
+        "juror_id": "economic",
+        "wedge_id": "w2",
+        "objection": "Payback story is qualitative. Need a time-to-value benchmark (weeks saved vs Jira setup) before it survives the budget meeting.",
+        "severity": "medium"
+      }
+    ]
+  },
+
+  "winner": {
+    "wedge_id": "w2",
+    "final_score": 0.655,
+    "runner_up_delta": 0.336,
+    "why_it_won": "Every juror scored w2 positive, including the Skeptic. The Economic Buyer (highest weight, 0.35) ranked it highest because 'we spent six months configuring a tool' is a budget line item a CFO can kill. The wedge reframes the buying decision as time-to-value rather than feature-count, which survives the budget review where w1 and w3 do not. w1 lost the Skeptic outright; w3 lost the CFO and the Skeptic. w2 is the only wedge with no negative vote.",
+    "surviving_objections": [
+      "Opinionated defaults become opinionated cages at 500+ engineers. No ceiling data.",
+      "Reversing a two-year Jira rollout is politically expensive. Wedge must justify that cost explicitly.",
+      "Payback story is qualitative. Need a time-to-value benchmark (weeks saved vs Jira setup) before it survives the budget meeting."
+    ]
+  },
+
+  "ads": [
+    {
+      "headline": "Your PM tool took six months to set up. Ours takes an afternoon.",
+      "body": "Jira and Asana ship 'customize everything.' Linear ships 'we already decided.' Opinionated defaults are a time machine. You set it up once and the tool gets out of the way.",
+      "cta": "See the defaults we picked for you",
+      "visual_brief": "Split-screen. Left: Jira config, 47 custom fields, slightly blurred. Right: Linear onboarding, 3 fields, single accent. No gradient. No 3D. Paper-cream background. Serif headline, mono caption.",
+      "pixero_url": "https://pixero.app/v/lnr-w2-01"
+    },
+    {
+      "headline": "Configuration is a tax your team pays every sprint.",
+      "body": "47 custom fields. 12 ticket types. 6 workflows no one remembers setting up. If the tool needs that much setup, the setup is the product. Linear ships opinions, not knobs.",
+      "cta": "Switch to the opinion",
+      "visual_brief": "Full-bleed paper texture. Large italic serif headline. Accent vermilion on the word 'tax'. Mono caption: CATEGORY · B2B SaaS Ops · N=412 TEAMS SURVEYED.",
+      "pixero_url": "https://pixero.app/v/lnr-w2-02"
+    },
+    {
+      "headline": "We built the tool for engineers. The PMO gets the reports for free.",
+      "body": "Project tools are usually designed for the PMO and retrofitted onto engineering. That is why engineers bypass them for Notion. Linear inverts the stack. The tool is for builders. Reports come free as a byproduct.",
+      "cta": "Show me how",
+      "visual_brief": "Mono terminal-style readout on paper. Live counters: '1,240 issues shipped · 94% on-time · reports auto-generated.' Accent red on the word 'free.'",
+      "pixero_url": "https://pixero.app/v/lnr-w2-03"
+    },
+    {
+      "headline": "Your team spends 12 hours a week on ticket hygiene. Take that week back.",
+      "body": "The best tool is the one that disappears after setup. Linear's defaults mean you stop deciding and start shipping. Average migrated team saves 11 hours per sprint in the first 90 days.",
+      "cta": "Run a 14-day trial",
+      "visual_brief": "Minimal. Cream paper. Single line of serif type centered. A rotated 'PRE-VALIDATED · JURY OF 4' stamp in accent red, top-right corner.",
+      "pixero_url": "https://pixero.app/v/lnr-w2-04"
+    },
+    {
+      "headline": "You picked Jira two years ago. It is okay to switch now.",
+      "body": "Tools age. Companies change. The decision that was right at 50 people is wrong at 200. Linear's install base grows 3.1x faster than competitors in 100 to 500-person orgs. The best time to migrate is before the config debt compounds.",
+      "cta": "See migration case studies",
+      "visual_brief": "Newsprint headline treatment. Paper texture, two-column layout. Serif headline over body. Mono caption: SOURCE · LINKEDIN HIRING SIGNALS · N=412.",
+      "pixero_url": "https://pixero.app/v/lnr-w2-05"
+    }
+  ],
+
+  "launch_board": {
+    "tasks": [
+      {
+        "id": "t01",
+        "title": "Publish the Configuration Tax benchmark study",
+        "owner": "Marketing",
+        "description": "Data study: average Jira setup time vs Linear, sourced from the Apify-harvested review corpus. Lead with the 47-custom-fields statistic. Target: Hacker News front page + LinkedIn long-form.",
+        "due_day": 7
+      },
+      {
+        "id": "t02",
+        "title": "Launch the w2 pre-validated ad set on LinkedIn",
+        "owner": "Marketing",
+        "description": "Push the 5 Pixero variants live. Segment by VP Eng and CFO job titles, 100 to 500-person B2B SaaS. Weekly creative rotation. Budget cap $12k across 14 days.",
+        "due_day": 5
+      },
+      {
+        "id": "t03",
+        "title": "Ship the Jira to Linear migration playbook",
+        "owner": "Marketing",
+        "description": "One-page 'Jira to Linear in 14 Days' guide. Concrete steps, not marketing. Directly addresses the Skeptic's political-cost objection. Publish as a gated asset on the pricing page.",
+        "due_day": 10
+      },
+      {
+        "id": "t04",
+        "title": "Founder POV thread on the category reframe",
+        "owner": "Founder",
+        "description": "8-tweet X thread authored by the founder. Opens with 'Every PM tool is designed for the PMO and retrofitted onto engineering.' Answers the Champion's archetype explicitly. No product pitch until tweet 7.",
+        "due_day": 2
+      },
+      {
+        "id": "t05",
+        "title": "Host the Configuration Debt roundtable",
+        "owner": "Founder",
+        "description": "Invite-only Zoom, 6 VP Engineering attendees from target ICP. Founder facilitates. No slides. The conversation is the content; record with consent for an edited podcast drop.",
+        "due_day": 12
+      },
+      {
+        "id": "t06",
+        "title": "Redesign homepage H1 around w2",
+        "owner": "Design",
+        "description": "Replace current hero with 'Opinions, not knobs.' Ghost typography treatment on 'knobs' (outlined twin, accent). Single CTA. Kill every other above-the-fold element for two weeks.",
+        "due_day": 3
+      },
+      {
+        "id": "t07",
+        "title": "Time-to-first-issue benchmark widget",
+        "owner": "Design",
+        "description": "Live counter on the marketing site showing median time-to-first-issue for new workspaces. Currently 84 seconds. This is the quantitative answer to the CFO's payback objection.",
+        "due_day": 14
+      },
+      {
+        "id": "t08",
+        "title": "Segmented CRM nurture by juror archetype",
+        "owner": "GTM Eng",
+        "description": "4 email flows keyed to Champion, Economic Buyer, Technical Blocker, Skeptic. Each flow leads with the objection that persona raised. Assign archetype at lead-scoring time based on title and firmographics.",
+        "due_day": 9
+      },
+      {
+        "id": "t09",
+        "title": "Instrument the payback-period metric",
+        "owner": "GTM Eng",
+        "description": "Track time-to-first-value for new teams: days from signup to 10 issues shipped. Publish the metric externally on day 7. This is the answer to the Economic Buyer's surviving objection.",
+        "due_day": 7
+      },
+      {
+        "id": "t10",
+        "title": "The 500+ engineer ceiling page",
+        "owner": "GTM Eng",
+        "description": "Direct answer to the Blocker's scaling objection. Case studies from Ramp (800 engineers) and Retool (600 engineers) running Linear at scale. Include the exact workflow customizations they made without leaving the defaults.",
+        "due_day": 10
+      }
+    ],
+    "timeline": [
+      { "day": 1, "milestone": "Founder thread drafted (t04) · homepage redesign started (t06) · benchmark study research started (t01)" },
+      { "day": 3, "milestone": "Homepage w2 hero goes live (t06)" },
+      { "day": 5, "milestone": "Pre-validated ad set live on LinkedIn (t02)" },
+      { "day": 7, "milestone": "Configuration Tax benchmark study published (t01) · payback metric live (t09)" },
+      { "day": 10, "milestone": "Migration playbook published (t03) · 500+ ceiling page live (t10)" },
+      { "day": 12, "milestone": "Configuration Debt roundtable (t05)" },
+      { "day": 14, "milestone": "Time-to-first-issue widget live (t07) · 14-day retro" }
+    ],
+    "executive_summary": "The winning wedge is Escape the Configuration Mine. Linear sells fewer decisions in a category where every competitor sells infinite flexibility. The synthetic jury of four composite buyers, weighted toward the CFO at 0.35, converged on this framing because it reframes the buying decision as time-to-value rather than feature-count. Every juror scored it positive. The wedge survives the budget review because 'we spent six months configuring a tool' is a line item a CFO can kill.\n\nTwo surviving objections move onto the launch board as risks to address, not reasons to reject. First, the Staff Platform Engineer flagged that opinionated defaults become opinionated cages at 500+ engineers; Ramp and Retool case studies are the answer. Second, the PMO skeptic noted that reversing a two-year Jira rollout is politically expensive; the migration playbook is the answer.\n\nThe 14-day sprint publishes five load-bearing artifacts: the Configuration Tax benchmark study, a w2-led ad set, the migration playbook, a founder-authored POV thread, and a 500+ ceiling page. The metric to watch is median time-to-first-issue for new teams, instrumented on day 7. If it stays under 90 seconds, the wedge holds.",
+    "rory_board_url": "https://rory.app/b/demo-linear-w2"
+  },
+
+  "trace": [
+    { "t": 0.0,   "agent": "kernel",       "kind": "info", "message": "init shadow_launch · run_id run_2026-04-18_demo-linear-001" },
+    { "t": 0.3,   "agent": "kernel",       "kind": "info", "message": "loading run input · linear.app · 2 competitors · icp: B2B SaaS eng teams" },
+    { "t": 0.6,   "agent": "kalibr",       "kind": "info", "message": "KALIBR booted · paths=[claude-sonnet-4, claude-haiku-4-5, gpt-4o] · goals=5" },
+    { "t": 1.2,   "agent": "scout",        "kind": "info", "message": "STAGE 01 · scout · dispatching apify actors" },
+    { "t": 1.8,   "agent": "apify",        "kind": "info", "message": "website_content_crawler · started · target=linear.app" },
+    { "t": 2.1,   "agent": "apify",        "kind": "info", "message": "website_content_crawler · started · target=atlassian.com/software/jira" },
+    { "t": 2.4,   "agent": "apify",        "kind": "info", "message": "website_content_crawler · started · target=asana.com" },
+    { "t": 3.0,   "agent": "apify",        "kind": "info", "message": "google_serp · started · query='jira vs linear' + 8 variants" },
+    { "t": 3.6,   "agent": "apify",        "kind": "info", "message": "reddit_scraper · started · subs=r/ExperiencedDevs, r/ProductManagement, r/SaaS" },
+    { "t": 4.0,   "agent": "apify",        "kind": "info", "message": "linkedin_jobs · started · companies=linear, atlassian, asana" },
+    { "t": 4.4,   "agent": "apify",        "kind": "info", "message": "g2_reviews · started · products=linear, jira, asana" },
+    { "t": 4.8,   "agent": "apify",        "kind": "info", "message": "x_scraper · started · search='linear pm tool' + 4 variants" },
+    { "t": 8.2,   "agent": "apify",        "kind": "ok",   "message": "website_content_crawler · linear.app · 42 pages pulled" },
+    { "t": 9.4,   "agent": "apify",        "kind": "ok",   "message": "website_content_crawler · jira · 187 pages pulled" },
+    { "t": 10.1,  "agent": "apify",        "kind": "ok",   "message": "website_content_crawler · asana · 113 pages pulled" },
+    { "t": 11.6,  "agent": "apify",        "kind": "ok",   "message": "google_serp · 180 results · n_orgs=34" },
+    { "t": 13.0,  "agent": "kalibr",       "kind": "warn", "message": "rerouted summarize_pages · claude-haiku-4-5 timeout 3200ms · fallback claude-sonnet-4 · recovered" },
+    { "t": 14.2,  "agent": "apify",        "kind": "ok",   "message": "reddit_scraper · 89 threads · 3,412 comments" },
+    { "t": 15.8,  "agent": "apify",        "kind": "ok",   "message": "linkedin_jobs · 412 postings · parsed" },
+    { "t": 16.9,  "agent": "apify",        "kind": "ok",   "message": "g2_reviews · linear 1,240 · jira 6,102 · asana 11,350 · ingested" },
+    { "t": 18.5,  "agent": "apify",        "kind": "ok",   "message": "x_scraper · 67 threads · 2,400 replies" },
+    { "t": 19.0,  "agent": "scout",        "kind": "info", "message": "summarizing positioning_map via claude-sonnet-4" },
+    { "t": 20.8,  "agent": "kalibr",       "kind": "warn", "message": "rerouted twin_summarization · gpt-4o malformed_output · fallback claude-sonnet-4 · recovered" },
+    { "t": 22.4,  "agent": "scout",        "kind": "ok",   "message": "positioning_map assembled · 3 competitors mapped" },
+    { "t": 23.1,  "agent": "scout",        "kind": "ok",   "message": "gaps identified · n=5 · key gap: opinionation as velocity" },
+    { "t": 24.0,  "agent": "scout",        "kind": "ok",   "message": "STAGE 01 complete · market_twin · 8,320 docs ingested · 5 gaps" },
+    { "t": 25.0,  "agent": "cartographer", "kind": "info", "message": "STAGE 02 · cartographer · generating wedges from twin" },
+    { "t": 26.4,  "agent": "kalibr",       "kind": "info", "message": "routed wedge_discovery to claude-sonnet-4 · rationale: reasoning task" },
+    { "t": 29.8,  "agent": "cartographer", "kind": "ok",   "message": "w1 drafted · Ship Software, Not Tickets" },
+    { "t": 32.2,  "agent": "cartographer", "kind": "ok",   "message": "w2 drafted · Escape the Configuration Mine" },
+    { "t": 34.6,  "agent": "cartographer", "kind": "ok",   "message": "w3 drafted · Speed as a Product Decision" },
+    { "t": 36.0,  "agent": "cartographer", "kind": "ok",   "message": "evidence pointers validated · avg 3.3 per wedge" },
+    { "t": 38.5,  "agent": "cartographer", "kind": "ok",   "message": "STAGE 02 complete · 3 wedges · evidence-backed" },
+    { "t": 40.0,  "agent": "clerk",        "kind": "info", "message": "STAGE 03 · clerk · instantiating jury" },
+    { "t": 41.2,  "agent": "minds",        "kind": "info", "message": "instantiating juror champion · corpus n=14 linkedin profiles" },
+    { "t": 42.0,  "agent": "minds",        "kind": "info", "message": "instantiating juror economic · corpus n=11 linkedin profiles" },
+    { "t": 42.6,  "agent": "minds",        "kind": "info", "message": "instantiating juror blocker · corpus n=22 linkedin profiles" },
+    { "t": 43.2,  "agent": "minds",        "kind": "info", "message": "instantiating juror skeptic · corpus n=9 linkedin profiles" },
+    { "t": 46.0,  "agent": "minds",        "kind": "ok",   "message": "4 jurors ready · round 1 starting" },
+    { "t": 49.5,  "agent": "clerk",        "kind": "ok",   "message": "champion reacted to w1 · score +0.82" },
+    { "t": 52.8,  "agent": "clerk",        "kind": "ok",   "message": "economic reacted to w1 · score +0.44" },
+    { "t": 55.1,  "agent": "minds",        "kind": "info", "message": "blocker latency 4.2s · within slo" },
+    { "t": 56.4,  "agent": "clerk",        "kind": "ok",   "message": "blocker reacted to w1 · score +0.18" },
+    { "t": 59.0,  "agent": "clerk",        "kind": "ok",   "message": "skeptic reacted to w1 · score -0.22" },
+    { "t": 61.4,  "agent": "clerk",        "kind": "ok",   "message": "champion reacted to w2 · score +0.88" },
+    { "t": 63.7,  "agent": "kalibr",       "kind": "warn", "message": "rerouted score_reaction · claude-haiku-4-5 timeout · fallback gpt-4o · recovered" },
+    { "t": 65.8,  "agent": "clerk",        "kind": "ok",   "message": "economic reacted to w2 · score +0.81" },
+    { "t": 68.0,  "agent": "clerk",        "kind": "ok",   "message": "blocker reacted to w2 · score +0.51" },
+    { "t": 70.2,  "agent": "clerk",        "kind": "ok",   "message": "skeptic reacted to w2 · score +0.34" },
+    { "t": 72.8,  "agent": "clerk",        "kind": "ok",   "message": "champion reacted to w3 · score +0.42" },
+    { "t": 74.9,  "agent": "clerk",        "kind": "ok",   "message": "economic reacted to w3 · score -0.05" },
+    { "t": 77.2,  "agent": "clerk",        "kind": "ok",   "message": "blocker reacted to w3 · score +0.08" },
+    { "t": 79.5,  "agent": "clerk",        "kind": "ok",   "message": "skeptic reacted to w3 · score -0.31" },
+    { "t": 81.0,  "agent": "clerk",        "kind": "ok",   "message": "consensus_vector · w1 0.319 · w2 0.655 · w3 0.025" },
+    { "t": 82.6,  "agent": "clerk",        "kind": "ok",   "message": "winner w2 · delta 0.336" },
+    { "t": 84.0,  "agent": "clerk",        "kind": "info", "message": "extracting dissent log on winner" },
+    { "t": 86.4,  "agent": "clerk",        "kind": "ok",   "message": "surviving_objections n=3 · blocker scaling · skeptic politics · economic payback" },
+    { "t": 88.0,  "agent": "clerk",        "kind": "ok",   "message": "STAGE 03 complete · jury convened · winner w2" },
+    { "t": 90.0,  "agent": "producer",     "kind": "info", "message": "STAGE 04 · producer · sending w2 brief to pixero" },
+    { "t": 91.5,  "agent": "pixero",       "kind": "info", "message": "brief received · generating variants" },
+    { "t": 94.8,  "agent": "kalibr",       "kind": "info", "message": "pixero latency 5.2s · within slo" },
+    { "t": 97.6,  "agent": "pixero",       "kind": "ok",   "message": "variant 1/5 returned · The Six-Month Tool" },
+    { "t": 99.1,  "agent": "pixero",       "kind": "ok",   "message": "variant 2/5 returned · Configuration is a Tax" },
+    { "t": 100.4, "agent": "pixero",       "kind": "ok",   "message": "variant 3/5 returned · Reports for Free" },
+    { "t": 101.8, "agent": "pixero",       "kind": "ok",   "message": "variant 4/5 returned · Tool That Gets Out of the Way" },
+    { "t": 103.3, "agent": "pixero",       "kind": "ok",   "message": "variant 5/5 returned · Stop Reversing Two-Year Decision" },
+    { "t": 104.2, "agent": "producer",     "kind": "ok",   "message": "STAGE 04 complete · 5 meta ad variants ready" },
+    { "t": 105.0, "agent": "scribe",       "kind": "info", "message": "STAGE 05 · scribe · assembling launch_board" },
+    { "t": 106.8, "agent": "kalibr",       "kind": "info", "message": "routed task_generation to claude-sonnet-4 · reasoning task" },
+    { "t": 109.4, "agent": "scribe",       "kind": "ok",   "message": "10 tasks drafted · 4 owners" },
+    { "t": 111.2, "agent": "scribe",       "kind": "ok",   "message": "7 milestones · 14-day sprint" },
+    { "t": 113.0, "agent": "kalibr",       "kind": "warn", "message": "rerouted exec_summary · claude-sonnet-4 rate_limited · fallback claude-sonnet-4-6 · recovered" },
+    { "t": 115.6, "agent": "scribe",       "kind": "ok",   "message": "executive_summary drafted · 218 words" },
+    { "t": 117.2, "agent": "rory",         "kind": "info", "message": "board.create called" },
+    { "t": 118.4, "agent": "rory",         "kind": "ok",   "message": "board created · rory.app/b/demo-linear-w2" },
+    { "t": 119.6, "agent": "scribe",       "kind": "ok",   "message": "STAGE 05 complete · launch_board ready" },
+    { "t": 120.0, "agent": "kernel",       "kind": "ok",   "message": "run complete · winner w2 · confidence 0.655 · 5 stages · 4 kalibr events · 0 human interventions" }
+  ],
+
+  "kalibr_events": [
+    {
+      "t": 13.0,
+      "goal": "summarize_pages",
+      "from_model": "claude-haiku-4-5",
+      "to_model": "claude-sonnet-4",
+      "failure_category": "timeout",
+      "detail": "claude-haiku-4-5 exceeded 3200ms budget on website_content_crawler summarization",
+      "recovered": true
+    },
+    {
+      "t": 20.8,
+      "goal": "twin_summarization",
+      "from_model": "gpt-4o",
+      "to_model": "claude-sonnet-4",
+      "failure_category": "malformed_output",
+      "detail": "gpt-4o returned json with missing positioning_map key on first attempt",
+      "recovered": true
+    },
+    {
+      "t": 63.7,
+      "goal": "score_reaction",
+      "from_model": "claude-haiku-4-5",
+      "to_model": "gpt-4o",
+      "failure_category": "timeout",
+      "detail": "claude-haiku-4-5 hung on champion->w2 scoring, fallback served the score in 1.1s",
+      "recovered": true
+    },
+    {
+      "t": 113.0,
+      "goal": "exec_summary",
+      "from_model": "claude-sonnet-4",
+      "to_model": "claude-sonnet-4-6",
+      "failure_category": "rate_limited",
+      "detail": "anthropic 429 on claude-sonnet-4 during peak, sonnet-4-6 served the summary in 2.6s",
+      "recovered": true
+    }
+  ]
+}

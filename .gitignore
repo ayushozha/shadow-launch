@@ -30,9 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# run artifacts
+# run artifacts (runtime only — cache/ at repo root is tracked for demo assets)
 runs/
-cache/
+api/cache/
 
 # editor / os
 .vscode/
