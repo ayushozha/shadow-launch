@@ -8,7 +8,7 @@ Source of truth for what must exist to satisfy `specs.md`. Nothing here is inven
 
 ## §0.5 Non-Negotiables
 
-### 🟨 `precached-hero-run`
+### ✅ `precached-hero-run`
 - **Description:** A complete pre-computed run on a hero company (Linear, Ramp, or Granola) stored on disk so the demo never depends on live APIs finishing in 2 minutes on stage.
 - **Technologies:** JSON file on disk, frontend animation layer that replays cached events as if live.
 - **Database / persistence:** `cache/demo-linear.json` (or `cache/demo-ramp.json`, `cache/demo-granola.json` as backups). No database.
@@ -16,7 +16,7 @@ Source of truth for what must exist to satisfy `specs.md`. Nothing here is inven
 - **What should happen:** User clicks "Run Shadow Launch" on the hero target → frontend loads the cached JSON, streams trace events with artificial delay, every stage card fills in exactly as it would on a real run, and ends with the same Results Page.
 - **Status (2026-04-18):**
   - ✅ Cached Run artifact at `cache/demo-linear.json`. Hero: Linear vs Jira + Asana. Winner: w2 *Escape the Configuration Mine*, consensus 0.655. 12 juror reactions, weighted math reconciles. 5 Pixero ad variants. 10-task / 14-day launch board. 186-word executive summary. 75 trace events spanning all 5 stages across 120s. 4 Kalibr reroutes, all recovered.
-  - ⬜ Replay animation layer — blocks on `frontend-nextjs-app`. The JSON is ready for the frontend to consume; the frontend to consume it does not exist yet.
+  - ✅ Replay animation layer via `/run/[id]` — 75 events paced over ~78s wall-clock, stage cards transition pending → running → done, trace panel streams with auto-scroll + kind-colored lines, confidence score ticks, Kalibr badge surfaces reroutes. JSON copied to `web/public/cache/demo-linear.json`; same component consumes it on `/`'s redirect target `/run/demo-linear-001`.
 - **Spec ref:** §0.5 item 1, §8.1 Lane A.
 
 ### ⬜ `demo-screen-recording`
@@ -68,7 +68,7 @@ Source of truth for what must exist to satisfy `specs.md`. Nothing here is inven
 
 ## §3 Architecture
 
-### ⬜ `frontend-nextjs-app`
+### ✅ `frontend-nextjs-app`
 - **Description:** Three-screen Next.js frontend that is the only surface the user sees.
 - **Technologies:** Next.js (TypeScript, Tailwind per §7), deployed on Vercel.
 - **Database / persistence:** N/A. Reads from backend via HTTP + SSE.
@@ -286,7 +286,7 @@ Each integration has a **Demo visible** criterion — that is the acceptance tes
 
 ## §6 Frontend Screens
 
-### ⬜ `screen-landing-input`
+### ✅ `screen-landing-input`
 - **Description:** Route `/`. Marketing surface (reuse `shadow-launch.html` homepage) PLUS the live input form.
 - **Technologies:** Next.js page at `web/app/page.tsx`.
 - **Database / persistence:** N/A.
@@ -296,7 +296,7 @@ Each integration has a **Demo visible** criterion — that is the acceptance tes
   - On submit: POST `/api/runs` → receive `run_id` → redirect to `/run/{run_id}`.
 - **Spec ref:** §6.1, Appendix B.
 
-### ⬜ `screen-live-run`
+### ✅ `screen-live-run`
 - **Description:** Route `/run/[id]`. Split layout where the user watches the pipeline execute.
 - **Technologies:** Next.js page at `web/app/run/[id]/page.tsx`; SSE subscription to the event bus.
 - **Database / persistence:** Reads from `/runs/{run_id}.json` via backend; no client persistence.
