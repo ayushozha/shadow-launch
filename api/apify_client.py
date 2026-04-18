@@ -152,8 +152,11 @@ class ApifyRunner:
     async def _run_one(
         self, slug: str, run_input: dict[str, Any], wait_secs: int
     ) -> list[dict[str, Any]]:
+        # Cap per-actor memory so we fit several concurrent runs within Apify's
+        # free-tier 8192MB total. Override via APIFY_ACTOR_MEMORY_MB.
+        mem_mb = int(os.getenv("APIFY_ACTOR_MEMORY_MB", "1024"))
         call = await self._client.actor(slug).call(
-            run_input=run_input, timeout_secs=wait_secs
+            run_input=run_input, timeout_secs=wait_secs, memory_mbytes=mem_mb
         )
         if not call or "defaultDatasetId" not in call:
             raise ApifyUnavailable(f"actor {slug} returned no dataset")
