@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shadow Launch / Rehearse the launch before the launch</title>
+<meta name="description" content="A synthetic market simulator for GTM teams. Build a live twin of your market, pressure-test your positioning against buyer clones, and leave with a winning wedge.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="assets/favicon-32.svg" sizes="32x32" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ece4d2;
+    --paper-deep: #e1d8c3;
+    --ink: #0c0c0a;
+    --ink-soft: #1a1a16;
+    --shadow: rgba(12, 12, 10, 0.12);
+    --shadow-strong: rgba(12, 12, 10, 0.22);
+    --muted: #6a6454;
+    --rule: rgba(12, 12, 10, 0.22);
+    --rule-soft: rgba(12, 12, 10, 0.1);
+    --accent: #e33312;
+    --accent-ink: #b3260a;
+    --phosphor: #2b6b3f;
+    --grain: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/><feColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0.35 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "SOFT" 30, "opsz" 14;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* grainy paper texture overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: var(--grain);
+    opacity: 0.55;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* soft vignette */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(12,12,10,0.08) 100%);
+    pointer-events: none;
+    z-index: 99;
+  }
+
+  .mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ============ TRACE TICKER ============ */
+  .trace-bar {
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+    background: var(--ink);
+    color: var(--paper);
+    height: 26px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    z-index: 10;
+  }
+  .trace-label {
+    padding: 0 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    background: var(--accent);
+    color: var(--paper);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .trace-label::before {
+    content: "●";
+    margin-right: 8px;
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink { 0%,60% {opacity:1;} 70%,100% {opacity:0.2;} }
+
+  .trace-stream {
+    display: flex;
+    gap: 48px;
+    padding-left: 48px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--paper);
+    white-space: nowrap;
+    animation: slide 48s linear infinite;
+  }
+  .trace-stream span { opacity: 0.85; }
+  .trace-stream .k { color: var(--accent); opacity: 1; margin-right: 6px; }
+  @keyframes slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ============ NAV ============ */
+  nav.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--rule);
+    position: sticky;
+    top: 0;
+    background: rgba(236, 228, 210, 0.92);
+    backdrop-filter: blur(8px);
+    z-index: 50;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 14, "wght" 500;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .logo-mark {
+    width: 22px;
+    height: 22px;
+    position: relative;
+  }
+  .logo-mark::before,
+  .logo-mark::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+  }
+  .logo-mark::after {
+    transform: translate(4px, 3px);
+    border-color: var(--accent);
+    mix-blend-mode: multiply;
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+  }
+  .nav-links a {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-cta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .nav-cta:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding: 80px 40px 40px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 60px;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .hero-meta {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 40px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .hero-meta .mono { color: var(--muted); }
+  .hero-meta .issue {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-variation-settings: "opsz" 14, "wght" 400;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .hero h1 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "wght" 420, "SOFT" 20;
+    font-size: clamp(56px, 9vw, 132px);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+    margin-bottom: 38px;
+    position: relative;
+  }
+  .hero h1 .italic {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "wght" 380, "SOFT" 80;
+    color: var(--ink-soft);
+  }
+  .hero h1 .ghost-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .hero h1 .ghost-wrap::before {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--shadow-strong);
+    transform: translate(14px, 10px);
+    z-index: -1;
+    pointer-events: none;
+    animation: drift 9s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%, 100% { transform: translate(14px, 10px); }
+    50% { transform: translate(18px, 14px); }
+  }
+
+  .hero-lede {
+    max-width: 540px;
+    font-size: 20px;
+    line-height: 1.5;
+    font-variation-settings: "opsz" 14, "wght" 400, "SOFT" 50;
+    color: var(--ink-soft);
+    margin-bottom: 32px;
+  }
+
+  .hero-cta-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 22px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    transition: all 0.25s;
+    cursor: pointer;
+  }
+  .btn-primary .arr { transition: transform 0.25s; }
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+  .btn-primary:hover .arr { transform: translateX(4px); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: var(--ink); }
+
+  /* ============ HERO SIDE PANEL (simulation readout) ============ */
+  .hero-side {
+    position: relative;
+    align-self: end;
+  }
+  .readout {
+    border: 1px solid var(--rule);
+    background: rgba(255, 252, 244, 0.5);
+    position: relative;
+  }
+  .readout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .readout-header .t {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+  }
+  .readout-header .dots {
+    display: flex;
+    gap: 5px;
+  }
+  .readout-header .dots span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(236, 228, 210, 0.35);
+  }
+  .readout-header .dots span.on { background: var(--accent); }
+
+  .readout-body {
+    padding: 18px 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    line-height: 1.9;
+    color: var(--ink-soft);
+    min-height: 340px;
+  }
+  .readout-body .line { display: block; opacity: 0; }
+  .readout-body .k { color: var(--accent); }
+  .readout-body .mu { color: var(--muted); }
+  .readout-body .ok { color: var(--phosphor); }
+
+  .readout-footer {
+    padding: 10px 14px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .readout-stamp {
+    position: absolute;
+    top: -22px;
+    right: -14px;
+    width: 120px;
+    height: 120px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transform: rotate(-12deg);
+    background: rgba(227, 51, 18, 0.06);
+    color: var(--accent);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    line-height: 1.3;
+    padding: 12px;
+    opacity: 0;
+    animation: stampIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 2.2s forwards;
+  }
+  @keyframes stampIn {
+    0% { opacity: 0; transform: rotate(-12deg) scale(2.4); }
+    60% { opacity: 0.8; transform: rotate(-12deg) scale(0.92); }
+    100% { opacity: 1; transform: rotate(-12deg) scale(1); }
+  }
+
+  /* ============ SECTION SCAFFOLD ============ */
+  section {
+    padding: 96px 40px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .section-head {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 40px;
+    margin-bottom: 56px;
+    align-items: baseline;
+  }
+  .section-head .mono {
+    color: var(--muted);
+  }
+  .section-head h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 60, "wght" 380, "SOFT" 40;
+    font-size: clamp(34px, 4.5vw, 58px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    max-width: 900px;
+  }
+  .section-head h2 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 60, "wght" 360, "SOFT" 80;
+    color: var(--accent);
+  }
+
+  /* ============ THESIS / MANIFESTO ============ */
+  .thesis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: start;
+  }
+  .thesis-body p {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 14, "wght" 400, "SOFT" 40;
+    font-size: 20px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+    color: var(--ink-soft);
+  }
+  .thesis-body p.lead {
+    font-size: 28px;
+    line-height: 1.3;
+    font-variation-settings: "opsz" 40, "wght" 420, "SOFT" 60;
+    color: var(--ink);
+  }
+  .thesis-body p .drop {
+    float: left;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "wght" 500, "SOFT" 20;
+    font-size: 84px;
+    line-height: 0.86;
+    padding: 6px 12px 0 0;
+    color: var(--accent);
+  }
+
+  .thesis-aside {
+    padding: 24px;
+    border: 1px solid var(--rule);
+    background: rgba(255, 252, 244, 0.5);
+  }
+  .thesis-aside .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--rule-soft);
+  }
+  .thesis-aside .row:last-child { border-bottom: none; }
+  .thesis-aside .row .l {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .thesis-aside .row .v {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink);
+    text-align: right;
+  }
+
+  /* ============ METHOD / 5 STEPS ============ */
+  .method {
+    background: var(--paper-deep);
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .step {
+    padding: 32px 22px 28px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s;
+  }
+  .step:last-child { border-right: none; }
+  .step:hover { background: rgba(255, 252, 244, 0.6); }
+
+  .step-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .step h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 40, "wght" 400, "SOFT" 50;
+    font-size: 26px;
+    line-height: 1.1;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+  .step h3 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 40, "wght" 380, "SOFT" 80;
+  }
+  .step p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+    font-variation-settings: "opsz" 14, "wght" 380;
+    margin-bottom: 20px;
+  }
+  .step-tag {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule-soft);
+  }
+  .step-tag::before {
+    content: "";
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* ============ JURY ============ */
+  .jury {
+    background: var(--paper);
+  }
+  .jury-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .juror {
+    border: 1px solid var(--rule);
+    padding: 24px;
+    background: rgba(255, 252, 244, 0.4);
+    position: relative;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+  }
+  .juror:hover {
+    transform: translateY(-4px);
+    box-shadow: 8px 10px 0 var(--shadow);
+  }
+
+  .juror-portrait {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .juror-portrait::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(236,228,210,0.3), transparent 60%);
+  }
+  .juror-portrait span {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-variation-settings: "opsz" 40, "wght" 400, "SOFT" 80;
+    font-size: 30px;
+    color: var(--paper);
+    z-index: 1;
+  }
+  .juror:nth-child(2) .juror-portrait { background: #3a4a3a; }
+  .juror:nth-child(3) .juror-portrait { background: #5a3a2a; }
+  .juror:nth-child(4) .juror-portrait { background: #2a3a4a; }
+
+  .juror-role {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .juror-name {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 40, "wght" 420, "SOFT" 50;
+    font-size: 22px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .juror-quote {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-variation-settings: "opsz" 14, "wght" 380, "SOFT" 100;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    padding: 14px 0;
+    border-top: 1px solid var(--rule-soft);
+    border-bottom: 1px solid var(--rule-soft);
+    position: relative;
+  }
+  .juror-quote::before {
+    content: "“";
+    position: absolute;
+    top: -2px;
+    left: -4px;
+    font-size: 40px;
+    color: var(--accent);
+    opacity: 0.3;
+    font-family: "Fraunces", serif;
+  }
+
+  .juror-meta {
+    margin-top: auto;
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .juror-meta .score {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ============ WEDGE ============ */
+  .wedge-section {
+    background: var(--paper-deep);
+  }
+  .wedge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+  .wedge-viz {
+    position: relative;
+    aspect-ratio: 1;
+    max-width: 500px;
+  }
+  .wedge-viz svg { width: 100%; height: 100%; }
+  .wedge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .wedge-item {
+    padding: 24px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 24px;
+    align-items: center;
+    position: relative;
+  }
+  .wedge-item:last-child { border-bottom: none; }
+  .wedge-rank {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "wght" 500, "SOFT" 30;
+    font-size: 56px;
+    line-height: 0.8;
+    color: var(--muted);
+  }
+  .wedge-item.winner .wedge-rank { color: var(--accent); }
+  .wedge-copy h4 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 40, "wght" 420, "SOFT" 40;
+    font-size: 22px;
+    line-height: 1.15;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .wedge-copy p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .wedge-score {
+    text-align: right;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+  .wedge-score .big {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 60, "wght" 500, "SOFT" 30;
+    font-size: 36px;
+    line-height: 1;
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .wedge-item.winner .big { color: var(--accent); }
+  .wedge-tag {
+    display: inline-block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    background: var(--accent);
+    color: var(--paper);
+    margin-top: 6px;
+  }
+  .wedge-item:not(.winner) .wedge-tag { display: none; }
+
+  /* ============ STACK ============ */
+  .stack {
+    background: var(--ink);
+    color: var(--paper);
+    border-bottom: none;
+  }
+  .stack .section-head h2 {
+    color: var(--paper);
+  }
+  .stack .section-head h2 em {
+    color: var(--accent);
+  }
+  .stack .section-head .mono {
+    color: rgba(236, 228, 210, 0.6);
+  }
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border-top: 1px solid rgba(236, 228, 210, 0.2);
+  }
+  .stack-item {
+    padding: 36px 24px;
+    border-right: 1px solid rgba(236, 228, 210, 0.15);
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+  }
+  .stack-item:last-child { border-right: none; }
+  .stack-role {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: rgba(236, 228, 210, 0.5);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .stack-name {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 40, "wght" 400, "SOFT" 60;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .stack-name em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .stack-desc {
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(236, 228, 210, 0.75);
+    font-variation-settings: "wght" 380;
+  }
+
+  /* ============ CTA ============ */
+  .cta {
+    padding: 140px 40px;
+    text-align: center;
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-deco {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cta-deco span {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "wght" 300, "SOFT" 100;
+    font-size: 320px;
+    line-height: 0.8;
+    color: var(--ink);
+    letter-spacing: -0.05em;
+  }
+  .cta-inner {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .cta .mono { color: var(--muted); margin-bottom: 24px; display: block; }
+  .cta h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "wght" 400, "SOFT" 40;
+    font-size: clamp(44px, 6vw, 88px);
+    line-height: 0.96;
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+  }
+  .cta h2 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "wght" 380, "SOFT" 90;
+    color: var(--accent);
+  }
+  .cta p {
+    font-size: 19px;
+    color: var(--ink-soft);
+    margin-bottom: 40px;
+    font-variation-settings: "wght" 400;
+  }
+
+  .access-form {
+    display: flex;
+    gap: 0;
+    max-width: 520px;
+    margin: 0 auto;
+    border: 1px solid var(--ink);
+    background: rgba(255, 252, 244, 0.6);
+  }
+  .access-form input {
+    flex: 1;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "wght" 400;
+    font-size: 17px;
+    color: var(--ink);
+    outline: none;
+  }
+  .access-form input::placeholder {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .access-form button {
+    padding: 16px 24px;
+    border: none;
+    border-left: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .access-form button:hover { background: var(--accent); }
+
+  .cta-note {
+    margin-top: 28px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    padding: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--rule);
+    background: var(--paper);
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  footer .mono { color: var(--muted); }
+  footer .foot-links {
+    display: flex;
+    gap: 28px;
+  }
+  footer .foot-links a {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  footer .foot-links a:hover { color: var(--accent); }
+
+  /* ============ REVEAL ANIMATIONS ============ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero h1, .hero-lede, .hero-cta-row, .hero-meta {
+    animation: floatIn 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .hero-meta { animation-delay: 0.05s; }
+  .hero h1 { animation-delay: 0.15s; }
+  .hero-lede { animation-delay: 0.5s; }
+  .hero-cta-row { animation-delay: 0.7s; }
+  .hero-side { animation: floatIn 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both; }
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1100px) {
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .step:nth-child(n) { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+    .jury-grid { grid-template-columns: repeat(2, 1fr); }
+    .stack-grid { grid-template-columns: repeat(2, 1fr); }
+    .stack-item { border-bottom: 1px solid rgba(236,228,210,0.15); }
+  }
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; padding: 40px 22px; gap: 40px; }
+    section { padding: 60px 22px; }
+    nav.top { padding: 16px 22px; }
+    .nav-links { display: none; }
+    .section-head { grid-template-columns: 1fr; gap: 16px; }
+    .thesis-grid { grid-template-columns: 1fr; gap: 32px; }
+    .steps { grid-template-columns: 1fr; }
+    .jury-grid { grid-template-columns: 1fr; }
+    .wedge-grid { grid-template-columns: 1fr; }
+    .stack-grid { grid-template-columns: 1fr; }
+    .cta { padding: 80px 22px; }
+    .cta-deco span { font-size: 140px; }
+    .readout-stamp { right: 8px; width: 92px; height: 92px; font-size: 8px; }
+    footer { padding: 22px; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TRACE TICKER ===== -->
+<div class="trace-bar" aria-hidden="true">
+  <div class="trace-label">LIVE / SIMULATION TRACE</div>
+  <div class="trace-stream">
+    <span><span class="k">APIFY</span> scanning competitor_a.com / 412 signals indexed</span>
+    <span><span class="k">MINDS</span> instantiating buyer_clone: economic_buyer</span>
+    <span><span class="k">KALIBR</span> rerouting creative_gen after timeout on model_1</span>
+    <span><span class="k">PIXERO</span> compiling 42 meta variants for wedge_02</span>
+    <span><span class="k">RORY</span> launch_board assembled / 8 owners assigned</span>
+    <span><span class="k">APIFY</span> harvesting g2 reviews / sentiment delta -0.18</span>
+    <span><span class="k">MINDS</span> cfo_clone raises objection: payback_period</span>
+    <span><span class="k">JURY</span> deliberation round 3 / consensus at 0.74</span>
+    <!-- duplicate for seamless loop -->
+    <span><span class="k">APIFY</span> scanning competitor_a.com / 412 signals indexed</span>
+    <span><span class="k">MINDS</span> instantiating buyer_clone: economic_buyer</span>
+    <span><span class="k">KALIBR</span> rerouting creative_gen after timeout on model_1</span>
+    <span><span class="k">PIXERO</span> compiling 42 meta variants for wedge_02</span>
+    <span><span class="k">RORY</span> launch_board assembled / 8 owners assigned</span>
+    <span><span class="k">APIFY</span> harvesting g2 reviews / sentiment delta -0.18</span>
+    <span><span class="k">MINDS</span> cfo_clone raises objection: payback_period</span>
+    <span><span class="k">JURY</span> deliberation round 3 / consensus at 0.74</span>
+  </div>
+</div>
+
+<!-- ===== NAV ===== -->
+<nav class="top">
+  <a href="#" class="logo">
+    <span class="logo-mark"></span>
+    Shadow Launch
+  </a>
+  <div class="nav-links">
+    <a href="#method">Method</a>
+    <a href="#jury">The Jury</a>
+    <a href="#wedge">Wedge</a>
+    <a href="#stack">Stack</a>
+  </div>
+  <button class="nav-cta" onclick="document.getElementById('access').scrollIntoView({behavior:'smooth'})">Request Access</button>
+</nav>
+
+<!-- ===== HERO ===== -->
+<header class="hero">
+  <div class="hero-meta">
+    <span class="mono">Issue N° 01 / Field Manual</span>
+    <span class="issue">A synthetic market for go-to-market teams</span>
+    <span class="mono">04.18.26 / San Francisco</span>
+  </div>
+
+  <div class="hero-left">
+    <h1>
+      The launch<br>
+      before the <span class="ghost-wrap" data-text="launch."><span class="italic">launch.</span></span>
+    </h1>
+    <p class="hero-lede">
+      Shadow Launch builds a live twin of your market from the public web, lets a jury of synthetic buyers tear your positioning apart, and hands back the wedge that survives, with ads and a launch plan attached. No real dollars spent. No real customers used as the test group.
+    </p>
+    <div class="hero-cta-row">
+      <button class="btn-primary" onclick="document.getElementById('access').scrollIntoView({behavior:'smooth'})">
+        Run a Shadow Launch
+        <span class="arr">→</span>
+      </button>
+      <a class="btn-secondary" href="#method">See the method</a>
+    </div>
+  </div>
+
+  <div class="hero-side">
+    <div class="readout">
+      <div class="readout-header">
+        <span class="t">SIM_RUN / 004-A</span>
+        <div class="dots">
+          <span class="on"></span><span class="on"></span><span class="on"></span>
+        </div>
+      </div>
+      <div class="readout-body" id="readout">
+        <span class="line"><span class="mu">[00:00]</span> <span class="k">init</span> shadow_launch.run()</span>
+        <span class="line"><span class="mu">[00:03]</span> apify → harvesting 6 actors</span>
+        <span class="line"><span class="mu">[00:11]</span> market_twin assembled / n=847</span>
+        <span class="line"><span class="mu">[00:14]</span> wedge candidates surfaced → 3</span>
+        <span class="line"><span class="mu">[00:18]</span> minds → jury instantiating</span>
+        <span class="line"><span class="mu">[00:26]</span> jury.deliberate(round=1)</span>
+        <span class="line"><span class="mu">[00:41]</span> cfo: <span class="k">"payback unclear"</span></span>
+        <span class="line"><span class="mu">[00:52]</span> champion: <span class="k">"this is the angle"</span></span>
+        <span class="line"><span class="mu">[01:07]</span> wedge_02 consensus 0.81</span>
+        <span class="line"><span class="mu">[01:11]</span> pixero → 42 variants generated</span>
+        <span class="line"><span class="mu">[01:19]</span> kalibr → rerouted 4 / recovered 4</span>
+        <span class="line"><span class="mu">[01:22]</span> rory → launch_board committed</span>
+        <span class="line"><span class="ok">[01:24] ✓ RUN COMPLETE / cost = $3.41</span></span>
+      </div>
+      <div class="readout-footer">
+        <span>runtime · 00:01:24</span>
+        <span>confidence · 0.81</span>
+      </div>
+      <div class="readout-stamp">
+        PRE<br>TESTED<br>NOT LIVE
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== THESIS ===== -->
+<section>
+  <div class="section-head">
+    <span class="mono">§01 · Thesis</span>
+    <h2>Every launch is a <em>live experiment</em> on customers who never agreed to be the test group.</h2>
+  </div>
+  <div class="thesis-grid reveal">
+    <div class="thesis-body">
+      <p class="lead">
+        <span class="drop">T</span>he modern go-to-market stack is astonishingly efficient at producing outputs. Ads, sequences, landing pages, launches. It is terrible at one thing: knowing, before the spend, whether any of it will land.
+      </p>
+      <p>
+        So teams do what teams have always done. They guess. They A/B. They argue in rooms. They pick a positioning on a Tuesday and pay the market to tell them on a Friday that it was wrong. By then the quarter is half gone and the budget is half spent.
+      </p>
+      <p>
+        Shadow Launch is a different premise. Build a synthetic version of the market first. Rehearse the launch against it. Let the wedge that works reveal itself in simulation, not in production. The real launch is the encore, not the experiment.
+      </p>
+    </div>
+    <aside class="thesis-aside">
+      <div class="row"><span class="l">Typical ramp</span><span class="v">6 to 10 weeks</span></div>
+      <div class="row"><span class="l">Median spend to signal</span><span class="v">$18K to $40K</span></div>
+      <div class="row"><span class="l">Wedges tested before launch</span><span class="v">~1.3</span></div>
+      <div class="row"><span class="l">Shadow Launch ramp</span><span class="v">under 2 hours</span></div>
+      <div class="row"><span class="l">Wedges pressure-tested</span><span class="v">3 to 6</span></div>
+      <div class="row"><span class="l">Cost per simulation</span><span class="v">$3 to $14</span></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ===== METHOD ===== -->
+<section class="method" id="method">
+  <div class="section-head">
+    <span class="mono">§02 · Method</span>
+    <h2>The <em>five stages</em> of a shadow launch.</h2>
+  </div>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-num">STAGE 01</div>
+      <h3>Market <em>twin</em></h3>
+      <p>Apify actors fan out across competitor sites, pricing pages, changelogs, job posts, reviews, and the social discourse around your category. The twin is a living artifact that refreshes while you sleep.</p>
+      <span class="step-tag">Apify</span>
+    </div>
+    <div class="step">
+      <div class="step-num">STAGE 02</div>
+      <h3>Wedge <em>discovery</em></h3>
+      <p>The agent surfaces the three narrative angles your competitors are underplaying. Not features. Positioning axes with room to run. Each wedge arrives with a source-of-truth trail.</p>
+      <span class="step-tag">Signal Mining</span>
+    </div>
+    <div class="step">
+      <div class="step-num">STAGE 03</div>
+      <h3>Jury <em>deliberation</em></h3>
+      <p>Four synthetic buyers, composited from real public voices, interrogate each wedge in parallel. Champion, skeptic, economic buyer, technical blocker. They argue. They score. They dissent.</p>
+      <span class="step-tag">Minds AI</span>
+    </div>
+    <div class="step">
+      <div class="step-num">STAGE 04</div>
+      <h3>Campaign <em>manufacture</em></h3>
+      <p>The winning wedge flows into Pixero, which generates the creative, the campaign strategy, and the media plan. Only the variants that pre-tested well in simulation ever see a real ad account.</p>
+      <span class="step-tag">Pixero</span>
+    </div>
+    <div class="step">
+      <div class="step-num">STAGE 05</div>
+      <h3>Launch <em>plan</em></h3>
+      <p>Rory assembles the whole run into a single executable board. Owners, deadlines, assets, and an executive summary. You walk out with a launch, not a deck of suggestions.</p>
+      <span class="step-tag">Rory</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== JURY ===== -->
+<section class="jury" id="jury">
+  <div class="section-head">
+    <span class="mono">§03 · The Jury</span>
+    <h2>Four buyers, instantiated from the <em>actual voices</em> of your market.</h2>
+  </div>
+  <div class="jury-grid reveal">
+    <div class="juror">
+      <div class="juror-portrait"><span>C</span></div>
+      <div class="juror-role">Persona 01 / Champion</div>
+      <div class="juror-name">The believer who has to sell it internally.</div>
+      <div class="juror-quote">This is the angle. But they will come for the integration story first, and I do not have it yet.</div>
+      <div class="juror-meta">
+        <span>composited · n=212</span>
+        <span class="score">+0.72</span>
+      </div>
+    </div>
+
+    <div class="juror">
+      <div class="juror-portrait"><span>E</span></div>
+      <div class="juror-role">Persona 02 / Economic Buyer</div>
+      <div class="juror-name">The one who signs the check and counts the months.</div>
+      <div class="juror-quote">Show me payback inside a quarter or we wait until Q3. The narrative is nice. The math is not there.</div>
+      <div class="juror-meta">
+        <span>composited · n=184</span>
+        <span class="score">-0.41</span>
+      </div>
+    </div>
+
+    <div class="juror">
+      <div class="juror-portrait"><span>B</span></div>
+      <div class="juror-role">Persona 03 / Technical Blocker</div>
+      <div class="juror-name">The quiet no with a veto nobody talks about.</div>
+      <div class="juror-quote">The security posture is table stakes. If I cannot drop this into our existing stack in a morning, I will not schedule the second meeting.</div>
+      <div class="juror-meta">
+        <span>composited · n=147</span>
+        <span class="score">-0.22</span>
+      </div>
+    </div>
+
+    <div class="juror">
+      <div class="juror-portrait"><span>S</span></div>
+      <div class="juror-role">Persona 04 / Skeptic</div>
+      <div class="juror-name">The pattern-matcher who has heard every promise.</div>
+      <div class="juror-quote">I have seen this pitch three times this year under three different logos. What makes this one not fold in eighteen months.</div>
+      <div class="juror-meta">
+        <span>composited · n=304</span>
+        <span class="score">-0.08</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WEDGE ===== -->
+<section class="wedge-section" id="wedge">
+  <div class="section-head">
+    <span class="mono">§04 · The Wedge</span>
+    <h2>Three positioning angles. The jury <em>picks one</em>.</h2>
+  </div>
+  <div class="wedge-grid reveal">
+    <div class="wedge-viz">
+      <svg viewBox="0 0 400 400">
+        <!-- outer ring -->
+        <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(12,12,10,0.2)" stroke-width="1"/>
+        <circle cx="200" cy="200" r="140" fill="none" stroke="rgba(12,12,10,0.12)" stroke-width="1" stroke-dasharray="2 4"/>
+        <circle cx="200" cy="200" r="90" fill="none" stroke="rgba(12,12,10,0.12)" stroke-width="1" stroke-dasharray="2 4"/>
+        <!-- wedge 1 - losing -->
+        <path d="M 200 200 L 380 200 A 180 180 0 0 0 290 44 Z" fill="rgba(12,12,10,0.06)" stroke="rgba(12,12,10,0.35)" stroke-width="1"/>
+        <!-- wedge 2 - winning -->
+        <path d="M 200 200 L 290 44 A 180 180 0 0 0 110 44 Z" fill="#e33312" fill-opacity="0.85" stroke="#0c0c0a" stroke-width="1.5"/>
+        <!-- wedge 3 - losing -->
+        <path d="M 200 200 L 110 44 A 180 180 0 0 0 20 200 Z" fill="rgba(12,12,10,0.06)" stroke="rgba(12,12,10,0.35)" stroke-width="1"/>
+        <!-- remaining dead space -->
+        <path d="M 200 200 L 20 200 A 180 180 0 0 0 380 200 Z" fill="none" stroke="rgba(12,12,10,0.08)" stroke-width="1" stroke-dasharray="1 6"/>
+
+        <!-- winning wedge callout -->
+        <circle cx="200" cy="84" r="5" fill="#0c0c0a"/>
+        <line x1="200" y1="84" x2="200" y2="-6" stroke="#0c0c0a" stroke-width="1"/>
+        <text x="200" y="-14" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#0c0c0a" letter-spacing="2">WEDGE 02 · SELECTED</text>
+
+        <!-- center label -->
+        <text x="200" y="250" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#6a6454">market surface</text>
+        <text x="200" y="272" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6a6454" letter-spacing="1.5">n = 847 signals</text>
+
+        <!-- score ticks -->
+        <text x="200" y="32" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(12,12,10,0.4)">0.81</text>
+        <text x="354" y="136" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(12,12,10,0.4)">0.44</text>
+        <text x="46" y="136" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(12,12,10,0.4)">0.52</text>
+      </svg>
+    </div>
+
+    <div class="wedge-list">
+      <div class="wedge-item">
+        <div class="wedge-rank">01</div>
+        <div class="wedge-copy">
+          <h4>Speed as a feature.</h4>
+          <p>The category leaders ship quarterly. We ship nightly. Credible, but underweight with the economic buyer.</p>
+        </div>
+        <div class="wedge-score">
+          <span class="big">0.52</span>
+          <span>jury score</span>
+        </div>
+      </div>
+
+      <div class="wedge-item winner">
+        <div class="wedge-rank">02</div>
+        <div class="wedge-copy">
+          <h4>The last tool you buy in this category.</h4>
+          <p>Reframes the purchase as a consolidation, not an addition. Champion loves the internal story. Skeptic grudgingly agrees. Jury converges fastest here.</p>
+          <span class="wedge-tag">Selected</span>
+        </div>
+        <div class="wedge-score">
+          <span class="big">0.81</span>
+          <span>jury score</span>
+        </div>
+      </div>
+
+      <div class="wedge-item">
+        <div class="wedge-rank">03</div>
+        <div class="wedge-copy">
+          <h4>Built for the team of one.</h4>
+          <p>Resonates narrowly. Plays well to solopreneurs but the blocker flags it as a toy in enterprise conversations.</p>
+        </div>
+        <div class="wedge-score">
+          <span class="big">0.44</span>
+          <span>jury score</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STACK ===== -->
+<section class="stack" id="stack">
+  <div class="section-head">
+    <span class="mono">§05 · Instrumentation</span>
+    <h2>An agent system, <em>not a demo</em>. Every tool does load-bearing work.</h2>
+  </div>
+  <div class="stack-grid reveal">
+    <div class="stack-item">
+      <div class="stack-role">Research Dept.</div>
+      <div class="stack-name"><em>Apify</em></div>
+      <div class="stack-desc">Six actors in parallel harvest the public web. Competitor pages, reviews, changelogs, discourse. The twin is only as honest as its intake.</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-role">Voice Dept.</div>
+      <div class="stack-name"><em>Minds AI</em></div>
+      <div class="stack-desc">High-fidelity buyer clones composited from real public voices. Not a chatbot. A jury that holds a persona across a multi-turn debate.</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-role">Media Dept.</div>
+      <div class="stack-name"><em>Pixero</em></div>
+      <div class="stack-desc">Turns the winning wedge into Meta-ready creative and a full campaign strategy. Only pre-tested variants reach production.</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-role">Operations</div>
+      <div class="stack-name"><em>Kalibr</em></div>
+      <div class="stack-desc">The nervous system. Adaptive routing, automatic recovery, model selection that sharpens across runs. Keeps the agent loop alive under real failure.</div>
+    </div>
+    <div class="stack-item">
+      <div class="stack-role">Mission Control</div>
+      <div class="stack-name"><em>Rory</em></div>
+      <div class="stack-desc">The human layer. Owners, timelines, executive summary, launch board. You end with a plan you can ship on Monday.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta" id="access">
+  <div class="cta-deco"><span>shadow</span></div>
+  <div class="cta-inner">
+    <span class="mono">§06 · Access</span>
+    <h2>Rehearse the launch <em>before you launch</em>.</h2>
+    <p>Request a shadow launch on your own product. Bring a URL, two competitors, and an ICP. We will send back the twin, the jury transcript, the winning wedge, the creative, and the launch plan.</p>
+    <form class="access-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='✓ ON THE LIST';">
+      <input type="email" placeholder="you@company.com" required>
+      <button type="submit">Request Access</button>
+    </form>
+    <div class="cta-note">Built 04.18.26 at the Marketing Agents Hackathon · SF</div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <span class="mono">Shadow Launch · a synthetic market for GTM teams</span>
+  <div class="foot-links">
+    <a href="#method">Method</a>
+    <a href="#jury">Jury</a>
+    <a href="#wedge">Wedge</a>
+    <a href="#stack">Stack</a>
+    <a href="#access">Access</a>
+  </div>
+  <span class="mono">© 26 · Field Note N° 01</span>
+</footer>
+
+<script>
+  // reveal on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // staggered readout lines
+  const lines = document.querySelectorAll('#readout .line');
+  lines.forEach((l, i) => {
+    setTimeout(() => {
+      l.style.transition = 'opacity 0.5s ease';
+      l.style.opacity = '1';
+    }, 800 + i * 180);
+  });
+</script>
+
+</body>
+</html>
