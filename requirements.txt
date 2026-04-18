@@ -1,0 +1,12 @@
+kalibr
+anthropic
+openai
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+httpx
+apify-client
+
+# dev
+pytest
