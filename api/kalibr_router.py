@@ -39,11 +39,21 @@ import json
 import logging
 import os
 import sys
+import uuid
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Callable
 
 from pydantic import BaseModel, ValidationError
 
 from .models import KalibrEvent
+
+
+def _new_event_id() -> str:
+    return f"ke_{uuid.uuid4().hex[:10]}"
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 if TYPE_CHECKING:
     from .events import EventBus
@@ -215,7 +225,7 @@ class KalibrRouter:
                 max_tokens=max_tokens,
             )
         return await self._run_direct_fallback(
-            messages=messages, paths=paths, max_tokens=max_tokens
+            messages=messages, paths=paths, max_tokens=max_tokens, goal=goal
         )
 
     async def _run_via_kalibr(
@@ -264,10 +274,12 @@ class KalibrRouter:
                 )
                 self._events.append(
                     KalibrEvent(
-                        kind="retry",
+                        event_id=_new_event_id(),
+                        t=_now(),
+                        goal=goal,
                         from_model=model_id,
                         to_model=next_model,
-                        reason=str(exc)[:500],
+                        failure_category=str(exc)[:120],
                         recovered=False,
                     )
                 )
@@ -292,10 +304,12 @@ class KalibrRouter:
                 # We recovered after at least one failure.
                 self._events.append(
                     KalibrEvent(
-                        kind="reroute",
+                        event_id=_new_event_id(),
+                        t=_now(),
+                        goal=goal,
                         from_model=first_path,
                         to_model=model_id,
-                        reason="previous path failed",
+                        failure_category="reroute",
                         recovered=True,
                     )
                 )
@@ -328,6 +342,7 @@ class KalibrRouter:
         messages: list[dict[str, str]],
         paths: list[str],
         max_tokens: int,
+        goal: str,
     ) -> str:
         """No-Kalibr mode: call Anthropic or OpenAI directly, in order.
 
@@ -357,10 +372,12 @@ class KalibrRouter:
                 )
                 self._events.append(
                     KalibrEvent(
-                        kind="retry",
+                        event_id=_new_event_id(),
+                        t=_now(),
+                        goal=goal,
                         from_model=model_id,
                         to_model=next_model,
-                        reason=str(exc)[:500],
+                        failure_category=f"fallback:{str(exc)[:110]}",
                         recovered=False,
                     )
                 )
@@ -369,10 +386,12 @@ class KalibrRouter:
             if model_id != first_path:
                 self._events.append(
                     KalibrEvent(
-                        kind="reroute",
+                        event_id=_new_event_id(),
+                        t=_now(),
+                        goal=goal,
                         from_model=first_path,
                         to_model=model_id,
-                        reason="previous path failed (fallback mode)",
+                        failure_category="reroute-fallback",
                         recovered=True,
                     )
                 )
