@@ -1,441 +1,336 @@
 # Shadow Launch
 
-**A GTM strategy simulator. Drop in a product URL. Get a synthetic twin of your market, a pressure-tested campaign, and a fourteen-day content calendar — every idea validated by a panel of six synthetic buyer personas before you launch.**
+Shadow Launch is a GTM strategy simulator.
 
-> Rehearse your launch against a synthetic twin of your market before you touch the real one.
+You give it a product URL. It researches the company, discovers the market around it, studies competitors and their social traction, proposes a campaign and a content calendar, and then runs that plan through a panel of synthetic buyer personas before anything goes live.
 
-Built for the **Marketing Agents Hackathon · Entrepreneurs First SF · 2026-04-18**.
+The goal is simple: instead of launching ideas directly into the real market and learning the hard way, Shadow Launch lets a team rehearse the launch first.
 
----
-
-## What it does
-
-You hand Shadow Launch a single URL. Seven stages run in parallel and sequence:
-
-1. **Brand Read** — Apify crawls your site; OpenAI synthesizes a positioning profile.
-2. **Competitor Discovery** — Apify Google SERP (3 queries) + Product Hunt + G2; Kalibr ranks the 5–8 strongest competitors.
-3. **Social Intelligence** — 25 Apify actors fan out across LinkedIn · X · Facebook · Instagram · TikTok, one per (competitor × platform).
-4. **Market Discourse** (3.5) — Reddit + Trustpilot scraping surface the top complaints and desires.
-5. **Campaign Generation** — OpenAI `gpt-4o` drafts 1–3 angles; `gpt-image-1` produces 3 images per angle.
-6. **Content Calendar** — 14-day multi-channel schedule, cadence-aware against competitor posting patterns.
-7. **Persona Debate** — **Minds AI Panels** stream reactions from 6 synthetic buyer personas (Marketing VP · CFO Skeptic · Engineering Lead · Target End-User · Social Media Manager · PR/Brand Authority). Weighted consensus per asset; dissent heat map on the ones flagged for rework.
-
-Every LLM + image call is routed through **Kalibr**. Cost ticker surfaces live, model attribution stamps every output, reroutes show up in the trace.
-
-Output is a shareable **Command Center** page with 9 sections: product profile, competitor grid, social traction comparison, creative gallery (real PNG bytes streamed from Postgres), calendar, debate transcripts, action-required list, Kalibr summary, export actions.
+Built for the Marketing Agents Hackathon at Entrepreneurs First SF on 2026-04-18.
 
 ---
 
-## Highlights
+## What The App Does
 
-- **No dummy data outside `/demo`.** Every production pageload hits real Apify / OpenAI / Minds / Kalibr APIs or surfaces a real error state.
-- **Real database.** PostgreSQL 17 with direct TLS. `shadowlaunch` schema has 14 tables + alembic migrations.
-- **6-persona jury.** Minds plan tier verified Premium+. Panels API drives Round 1 reactions via SSE; optional Round 2 rebuttals behind `MINDS_ROUND_2=1`.
-- **Real images.** `gpt-image-1` bytes persisted as `bytea` in Postgres, streamed via `/api/runs/{id}/assets/{asset_id}`.
-- **Live cost tracking.** Every Kalibr call reports prompt/completion tokens → estimated USD → aggregated on `runs.cost_usd_total`.
-- **Wizard flow.** 7 stage pages with a persistent jury rail + streaming trace readout. Deep-linkable, keyboard-nav (`← → Esc`), progress-preserved.
+At a high level, the app turns one product URL into a full GTM output.
 
----
+1. You paste in a product URL on the landing page.
+2. Shadow Launch researches the product and summarizes what the company is claiming, who it seems to be selling to, and where its current messaging is weak.
+3. It discovers the most relevant competitors automatically instead of asking the user to type them all in.
+4. It scrapes public signals from those competitors, including website positioning and social activity, to understand what they are doing, how often they post, and what kind of traction they seem to be getting.
+5. It uses those findings to generate campaign angles, creative prompts, visual assets, and a multi-day content plan.
+6. It sends those ideas into a synthetic debate, where multiple buyer personas react, object, agree, and score what should move forward.
+7. It collects everything into a results page that a founder, marketer, or GTM lead can actually use.
 
-## Architecture
+The point is not "AI makes some copy."
 
-<p align="center">
-  <img src="docs/architecture.svg" alt="Shadow Launch v2 architecture — frontend wizard, FastAPI backend, 6+1 agent pipeline, sponsor APIs, and Postgres schema" width="100%">
-</p>
-
-<sub>Source: <a href="docs/architecture.mmd"><code>docs/architecture.mmd</code></a> (Mermaid). Regenerate with <code>npx -y -p @mermaid-js/mermaid-cli@latest mmdc -i docs/architecture.mmd -o docs/architecture.svg -b '#ece4d2' --width 1600</code>.</sub>
-
-<details>
-<summary>Mermaid source (renders natively on GitHub)</summary>
-
-```mermaid
-flowchart TB
-    USER(["User pastes<br/>product URL"]) --> L
-
-    subgraph FE["Next.js 16 · React 19 · Tailwind v4 · TypeScript 6"]
-        L["/<br/>Landing"]
-        W1["/run/id/1-brand<br/>Brand Read"]
-        W2["/run/id/2-plan<br/>Marketing Plan"]
-        W3["/run/id/3-competitors<br/>Competitive Map"]
-        W4["/run/id/4-social<br/>Social Intel"]
-        W5["/run/id/5-plays<br/>GTM Plays"]
-        W6["/run/id/6-creative<br/>Creative"]
-        W7["/run/id/7-calendar<br/>Calendar"]
-        R["/results/id<br/>Command Center"]
-    end
-
-    L -->|POST /api/runs| API
-    W1 & W2 & W3 & W4 & W5 & W6 & W7 -.SSE /events.-> API
-    R -->|GET /api/runs/id| API
-
-    subgraph BE["FastAPI · Python 3.14 · SQLAlchemy 2 async · Pydantic 2"]
-        API["REST<br/>GET /api/health<br/>POST /api/runs<br/>GET /api/runs/id<br/>GET /api/runs/id/events (SSE)<br/>GET /api/runs/id/assets/id"]
-        ORCH["Orchestrator<br/>Kalibr-wrapped<br/>6+1 stage graph"]
-        BUS["EventBus<br/>SSE fan-out<br/>DB persistence"]
-        KR["KalibrRouter<br/>goal → model path<br/>retry · reroute · cost"]
-    end
-
-    API --> ORCH
-    ORCH --> BUS
-    ORCH --> KR
-
-    subgraph AGENTS["Pipeline agents — parallel fan-out on Stage 03 + 03.5"]
-        direction LR
-        A1["Stage 01<br/>product_researcher"]
-        A2["Stage 02<br/>competitor_discoverer"]
-        A3["Stage 03<br/>social_scraper<br/>→ 5 platform adapters"]
-        A35["Stage 03.5<br/>market_discourse"]
-        A4["Stage 04<br/>campaign_generator<br/>text + images"]
-        A5["Stage 05<br/>calendar_builder"]
-        A6["Stage 06<br/>persona_debater"]
-    end
-
-    ORCH --> A1 --> A2 --> A3
-    A2 --> A35
-    A3 & A35 --> A4 --> A5 --> A6
-
-    subgraph SP["Sponsor APIs"]
-        APIFY["Apify Store (10+ verified actors)<br/>· apify/website-content-crawler<br/>· apify/google-search-scraper<br/>· harvestapi/linkedin-company<br/>· harvestapi/linkedin-company-posts<br/>· kaitoeasyapi/twitter-x-... (pay-per-result)<br/>· apify/facebook-pages-scraper<br/>· apify/instagram-profile-scraper<br/>· clockworks/tiktok-scraper<br/>· trudax/reddit-scraper-lite<br/>· memo23/trustpilot-scraper-ppe<br/>· zen-studio/g2-reviews-scraper"]
-        OAI["OpenAI<br/>· gpt-4o-mini<br/>· gpt-4o<br/>· gpt-image-1"]
-        MINDS["Minds AI<br/>Sparks + Panels<br/>SSE streaming"]
-        KAL["Kalibr<br/>Adaptive routing<br/>Cross-run learning<br/>Trace capsules"]
-    end
-
-    A1 --> APIFY
-    A2 --> APIFY
-    A3 --> APIFY
-    A35 --> APIFY
-    A4 --> OAI
-    A6 --> MINDS
-    A1 & A2 & A4 & A5 & A6 --> KR
-    KR --> KAL --> OAI
-
-    subgraph DB["PostgreSQL 17.7 · postgresql.ayushojha.com"]
-        T["runs · product_profiles · competitors<br/>social_snapshots · discourse_items<br/>campaigns · image_assets<br/>content_calendars · calendar_slots<br/>persona_reactions · verdicts<br/>trace_events · kalibr_events · minds_sparks"]
-    end
-
-    BUS --> T
-    ORCH --> T
-    A1 & A2 & A3 & A35 & A4 & A5 & A6 --> T
-
-    W7 --> R
-
-    classDef fe fill:#ece4d2,stroke:#0c0c0a,color:#0c0c0a
-    classDef be fill:#e1d8c3,stroke:#0c0c0a,color:#0c0c0a
-    classDef ag fill:#fff5e1,stroke:#e33312,color:#0c0c0a
-    classDef sp fill:#0c0c0a,stroke:#e33312,color:#ece4d2
-    classDef db fill:#2b6b3f,stroke:#0c0c0a,color:#ece4d2
-    class L,W1,W2,W3,W4,W5,W6,W7,R fe
-    class API,ORCH,BUS,KR be
-    class A1,A2,A3,A35,A4,A5,A6 ag
-    class APIFY,OAI,MINDS,KAL sp
-    class T db
-```
-
-</details>
+The point is "AI builds a research-backed plan, then pressure-tests that plan before a human team ships it."
 
 ---
 
-## Pipeline sequence (happy path)
+## What Happens In The App
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as User
-    participant F as Next.js
-    participant B as FastAPI
-    participant O as Orchestrator
-    participant E as EventBus
-    participant DB as Postgres
-    participant AP as Apify
-    participant K as Kalibr → OpenAI
-    participant M as Minds AI
+The product is organized around three main user-facing surfaces:
 
-    U->>F: Paste product URL
-    F->>B: POST /api/runs {product_url}
-    B->>DB: INSERT runs (status=queued)
-    B-->>F: 202 {run_id, status:"running"}
-    F->>F: Redirect /run/{id}/1-brand
-    F->>B: GET /api/runs/{id}/events (SSE open)
-    B->>O: create_task(run_pipeline)
+### Landing page
 
-    Note over O,DB: Stage 01 · Product Research
-    O->>AP: website-content-crawler + google SERP
-    AP-->>O: raw pages + snippets
-    O->>K: synthesize → ProductProfile
-    K-->>O: typed profile + cost delta
-    O->>DB: INSERT product_profiles
-    O->>E: emit("stage 01 ok", kalibr_model, $cost)
-    E-->>F: SSE trace event
+The landing page is where the run starts.
 
-    Note over O,DB: Stage 02 · Competitor Discovery
-    O->>AP: 3× google SERP queries (parallel)
-    O->>K: rank + dedupe
-    O->>DB: INSERT competitors (5–8 rows)
+It explains the product idea, frames the problem, and gives the user a clear entry point. In the live v2 direction, the important user action is entering a product URL and starting a run. The job of this page is to answer:
 
-    par Stage 03 · Social (25 actors) — parallel fan-out
-        O->>AP: 25 actor invocations (sem=8)
-        AP-->>O: snapshots per (competitor, platform)
-        O->>DB: INSERT social_snapshots
-    and Stage 03.5 · Market Discourse
-        O->>AP: Reddit + Trustpilot
-        O->>K: synthesize complaints + desires
-        O->>DB: INSERT discourse_items
-    end
+- What is Shadow Launch?
+- Why does it matter?
+- What will happen if I give it my URL?
 
-    Note over O,DB: Stage 04 · Campaign + Images
-    O->>K: generate 1–3 angles
-    loop Per angle (3 images)
-        O->>K: gpt-image-1 prompt
-        K-->>O: b64 PNG bytes
-        O->>DB: INSERT image_assets (bytea)
-    end
-    O->>DB: INSERT campaigns
+### Live run view
 
-    Note over O,DB: Stage 05 · Calendar
-    O->>K: plan 14 days with cadence heatmap
-    O->>DB: INSERT content_calendars + calendar_slots
+The live run view is the operational screen.
 
-    Note over O,M: Stage 06 · Persona Debate
-    O->>M: ensure 6 sparks + panel (cached in minds_sparks)
-    loop Per target (angle · asset · slot — ~30 targets)
-        O->>M: POST /panels/{id}/ask
-        M-->>O: SSE stream of 6 reactions
-    end
-    O->>DB: INSERT persona_reactions + verdicts
-    O->>DB: UPDATE runs (status=completed, cost_usd_total)
-    O->>E: emit("pipeline complete")
+This is where the user watches the system work through the pipeline in stages. Rather than showing one black-box spinner, the app is meant to expose the work as it happens:
 
-    E-->>F: stage-ok events stream continuously
-    U->>F: Click through wizard stages
-    F->>B: GET /api/runs/{id} (on results page)
-    B-->>F: Full Run object
-    F->>U: Command Center render
-```
+- product research
+- competitor discovery
+- social analysis
+- market discourse
+- campaign generation
+- content calendar
+- persona debate
+
+This screen is where the app feels alive. The trace should show what is being researched, what stage is running, when a model is rerouted, and where outputs are being produced.
+
+### Results page
+
+The results page is the final artifact.
+
+This is the page that should answer, in plain business terms, "What did Shadow Launch learn, what does it recommend, and what should we do next?"
+
+In the current v2 structure, the results page is designed to include:
+
+1. A product profile that explains how the company currently presents itself.
+2. A competitor grid showing who else matters in the market and why.
+3. A social traction comparison so the user can see who is posting, where they are active, and what kind of engagement they are getting.
+4. A campaign proposal with the main angles Shadow Launch thinks are worth pursuing.
+5. A creative gallery with generated visual assets tied to those campaign angles.
+6. A compact content calendar so the plan turns into something operational, not just strategic.
+7. A persona debate summary showing how the synthetic audience reacted.
+8. A verdict list that highlights what should be pushed forward, what needs revision, and what should be rejected.
+9. A Kalibr summary that shows routing, recovery, and cost telemetry.
+10. Export and share actions so the run becomes reusable outside the app.
+
+This page matters the most because it is where all of the sponsor work becomes legible to a human.
 
 ---
 
-## Tech stack
+## How Each Sponsor Is Used
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | Next.js 16.2 (App Router, Turbopack) · React 19.2 · Tailwind v4 · TypeScript 6 |
-| **Backend** | FastAPI · Python 3.14 · Pydantic v2 · SQLAlchemy 2.x async · asyncpg · Alembic |
-| **Database** | PostgreSQL 17.7 (direct TLS, self-signed cert) |
-| **LLMs** | OpenAI `gpt-4o-mini`, `gpt-4o`, `gpt-image-1` · all routed via Kalibr |
-| **Research** | Apify (10+ actors · concurrency-capped semaphore) |
-| **Jury** | Minds AI Sparks + Panels (6-persona, SSE streaming) |
-| **Observability** | Kalibr traces + in-DB `trace_events` + `kalibr_events` audit tables |
+This repo has gone through more than one product direction, so some older demo-era files still mention a slightly different story. The current live direction is easiest to understand if you think about the sponsors in terms of responsibility.
+
+### Apify
+
+Apify is the research layer.
+
+Apify is how Shadow Launch gets out of its own head and looks at the real public web. It is used to:
+
+- crawl the user's site
+- discover competitor candidates
+- scrape competitor websites
+- collect social activity from platforms like LinkedIn, X, Facebook, Instagram, and TikTok
+- gather supporting discourse from places like Reddit and review sites
+
+Without Apify, Shadow Launch would just be generating strategy from the user's own description. With Apify, it has real market inputs to work from.
+
+In human terms: Apify is the system's eyes and ears.
+
+### Minds AI
+
+Minds AI is the evaluation layer.
+
+Once Shadow Launch has campaign ideas, creative directions, and content plans, Minds AI is used to simulate how different buyer personas react to them. Instead of treating the generated plan as automatically good, the app asks:
+
+- Would a Marketing VP buy this?
+- Would a CFO push back on this?
+- Would an Engineering Lead think this is credible?
+- Would the target end-user actually care?
+- Would a Social Media Manager think this is usable?
+- Would a PR or brand-minded persona think this creates risk?
+
+That synthetic panel is what turns the product from "marketing generation" into "marketing validation."
+
+In human terms: Minds AI is the room where the work gets challenged before a real audience sees it.
+
+### Kalibr
+
+Kalibr is the control layer.
+
+Shadow Launch makes a lot of model calls across research synthesis, reasoning, campaign writing, calendar generation, and image generation. Kalibr sits in the middle of those calls and handles:
+
+- model routing
+- retries
+- reroutes when a path fails
+- telemetry
+- cost tracking
+
+That matters because this app is not one prompt. It is a chain of dependent steps. If one model call fails or becomes too expensive, the product needs a way to keep the system moving and explain what happened.
+
+In human terms: Kalibr is the traffic controller and black box recorder for the run.
+
+### OpenAI
+
+OpenAI is the generation layer in the current v2 build.
+
+Once Apify has collected the raw market material, OpenAI is used to:
+
+- summarize the product and market findings
+- rank and frame competitors
+- generate campaign angles
+- draft copy
+- build calendar entries
+- generate image assets
+
+OpenAI is not being used as the "whole product." It is being used as the writing and image engine inside a broader system that is grounded by research and judged by synthetic personas.
+
+In human terms: OpenAI turns the inputs into strategy, copy, and creative output.
+
+### About older sponsor references
+
+Some earlier hackathon materials in this repo still mention Pixero and Rory. Those came from an earlier version of the product concept. The current live v2 direction is centered on Apify, Minds AI, Kalibr, and OpenAI.
+
+The `/demo/*` pages still preserve parts of that earlier storytelling, but the current backend-driven app is aimed at the v2 GTM simulator flow.
 
 ---
 
-## Repo layout
+## The Full Flow In Plain English
 
-```
+If you want the simplest explanation of the product, it is this:
+
+1. The user gives Shadow Launch a product URL.
+2. Shadow Launch reads that product the way a market analyst would.
+3. It finds the competitors that matter.
+4. It studies how those competitors position themselves and how they behave on social channels.
+5. It turns those findings into a proposed GTM strategy.
+6. It generates creative directions and supporting assets.
+7. It arranges the work into a content plan.
+8. It asks a synthetic panel of buyers and operators to critique the plan.
+9. It returns a results page that shows what to keep, what to revise, and why.
+
+That is the core promise of the app.
+
+---
+
+## App Surfaces In This Repo
+
+The repo currently contains both the live product direction and preserved demo assets.
+
+### Live app routes
+
+- `/` - landing page
+- `/run/[id]` - run entrypoint, which forwards into the staged run flow
+- `/results/[id]` - backend-driven results page
+
+### Demo routes
+
+- `/demo`
+- `/demo/01-landing`
+- `/demo/02-run`
+- `/demo/03-results`
+
+The `/demo/*` routes are useful as static visual references. They are not the same thing as the backend-driven product flow.
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind v4
+
+### Backend
+
+- FastAPI
+- Python 3.14
+- Pydantic v2
+- SQLAlchemy async
+- asyncpg
+
+### Data
+
+- PostgreSQL 17.7
+- direct TLS connection
+
+### External systems
+
+- Apify for research and scraping
+- Minds AI for persona debate
+- Kalibr for routing and telemetry
+- OpenAI for text and image generation
+
+---
+
+## Repo Layout
+
+```text
 shadow-launch/
-├── web/                                  # Next.js frontend
-│   ├── app/
-│   │   ├── page.tsx                      # Landing + URL form
-│   │   ├── run/[id]/
-│   │   │   ├── page.tsx                  # Redirect to 1-brand
-│   │   │   ├── 1-brand/page.tsx          # Wizard · Stage 1
-│   │   │   ├── 2-plan/page.tsx           # Wizard · Stage 2
-│   │   │   ├── 3-competitors/page.tsx    # Wizard · Stage 3
-│   │   │   ├── 4-social/page.tsx         # Wizard · Stage 4
-│   │   │   ├── 5-plays/page.tsx          # Wizard · Stage 5
-│   │   │   ├── 6-creative/page.tsx       # Wizard · Stage 6
-│   │   │   ├── 7-calendar/page.tsx       # Wizard · Stage 7
-│   │   │   ├── calendar/page.tsx         # Full-screen calendar
-│   │   │   ├── competitor/[id]/page.tsx  # Competitor deep-dive
-│   │   │   └── debate/page.tsx           # Debate panel
-│   │   ├── results/[id]/page.tsx         # Command Center
-│   │   ├── demo/**                       # Static showcase (untouched)
-│   │   ├── error.tsx / not-found.tsx / loading.tsx / global-error.tsx
-│   │   └── globals.css                   # paper/ink theme, calm design
-│   ├── components/
-│   │   ├── wizard/                       # WizardLayout · Stepper · JuryRail · StageReadout …
-│   │   ├── brand/  plan/  competitors/  social/  plays/  creative/  calendar-wizard/
-│   │   ├── results/                      # Command Center sections
-│   │   ├── common/  landing/  demo/      # Shared + landing + /demo-only
-│   │   └── competitor/ calendar/ debate/ # Per-route detail components
-│   └── lib/
-│       ├── types.ts                      # TS mirror of Pydantic models
-│       ├── api.ts                        # Typed backend client
-│       ├── useRunData.ts                 # SSE + polling hook
-│       └── wizard.ts                     # 7-stage registry + readiness
-│
-├── api/                                  # FastAPI backend
-│   ├── main.py                           # Routes · SSE · CORS
-│   ├── orchestrator.py                   # 6+1 stage pipeline
-│   ├── events.py                         # SSE bus + DB persistence
-│   ├── kalibr_router.py                  # goal → model path · cost estimate
-│   ├── apify_client.py                   # ApifyRunner + actor registry
-│   ├── minds_client.py                   # Sparks + Panels
-│   ├── models.py                         # Pydantic v2
-│   ├── db/
-│   │   ├── schema.py                     # SQLAlchemy tables (14)
-│   │   └── session.py                    # async engine + session factory
-│   ├── agents/
-│   │   ├── product_researcher.py         # Stage 01
-│   │   ├── competitor_discoverer.py      # Stage 02
-│   │   ├── social_scraper.py             # Stage 03 coordinator
-│   │   ├── social/                       # per-platform adapters
-│   │   │   ├── linkedin.py  twitter.py  facebook.py  instagram.py  tiktok.py
-│   │   ├── market_discourse.py           # Stage 03.5
-│   │   ├── campaign_generator.py         # Stage 04 (text + images)
-│   │   ├── calendar_builder.py           # Stage 05
-│   │   └── persona_debater.py            # Stage 06
-│   └── tests/                            # pytest · unit + live smoke tests
-│
-├── alembic/                              # DB migrations
-│   └── versions/                         # ← initial v2 schema lives here
-│
-├── cache/
-│   └── demo-linear.json                  # Pre-baked Linear run for /demo
-│
-├── docs/
-│   ├── features.md                       # Live completion tracker
-│   ├── demo-flow.md                      # Wizard UX spec
-│   ├── apify-actors.md                   # Verified actor registry
-│   └── design.md                         # Design system
-│
-├── shadow-launch.html                    # Static design reference
-├── specs.md                              # Original build spec (v1 source)
-├── .env.example                          # Required env var NAMES
-├── requirements.txt                      # Python dependencies
-├── alembic.ini                           # Alembic config
-└── README.md                             # This file
+|-- web/                  # Next.js frontend
+|   |-- app/              # routes
+|   |-- components/       # UI pieces
+|   `-- lib/              # typed API client + shared types
+|-- api/                  # FastAPI backend
+|   |-- agents/           # stage agents
+|   |-- db/               # SQLAlchemy schema + session
+|   |-- tests/            # backend tests
+|   |-- events.py         # SSE event bus
+|   |-- kalibr_router.py  # routing + telemetry
+|   |-- main.py           # API routes
+|   |-- models.py         # Pydantic models
+|   `-- orchestrator.py   # run pipeline
+|-- cache/                # demo artifacts
+|-- docs/                 # specs, features, design notes
+|-- requirements.txt      # Python deps
+|-- specs.md              # original hackathon spec
+`-- README.md
 ```
 
 ---
 
-## Sponsor integration map
-
-| Sponsor | Used in | What it does | Prize track |
-|---|---|---|---|
-| **Apify** | Stages 01 · 02 · 03 · 03.5 | 10+ actors across website crawling, SERP, 5 social platforms, Reddit, Trustpilot. Concurrency-capped semaphore, memory-capped at 512 MB per actor. | Best Use of Apify |
-| **Minds AI** | Stage 06 | 6 synthetic buyer-persona sparks, orchestrated in a single Panel. SSE-streamed reactions. Optional Round 2 rebuttals. | Best Use of Minds AI (primary target) |
-| **Kalibr** | Every LLM + image call | Goal-keyed model routing (`summarization` / `reasoning` / `creative` / `image_gen` / `persona_facilitation`). Reroutes on failure, estimates cost per completion, persists events to `kalibr_events` table. | Best Use of Kalibr |
-| **OpenAI** | All text synthesis + image generation | `gpt-4o-mini` for cheap synthesis, `gpt-4o` for reasoning, `gpt-image-1` for 1024×1024 campaign imagery. | — |
-
----
-
-## Prerequisites
-
-- **Node 24+** (tested with 24.13; 18+ technically works but this repo is built against the newest)
-- **Python 3.14** (for the async SQLAlchemy + Pydantic v2 stack)
-- **git** and a GitHub account
-- Sponsor API keys (see table below; a minimum of Kalibr + OpenAI + Apify + Minds gets a full live run)
-- **PostgreSQL** credentials (shared VPS available; see Quick Start)
-
----
-
-## Quick start
+## Quick Start
 
 ```bash
 git clone git@github.com:ayushozha/shadow-launch.git
 cd shadow-launch
 
-# 1. Environment
-cp .env.example .env
-# Fill in OPENAI_API_KEY, APIFY_TOKEN, MINDS_API_KEY, KALIBR_API_KEY, KALIBR_TENANT_ID, DATABASE_URL
-
-# 2. Install backend deps + apply DB migrations
+# backend
 python -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\Activate.ps1
+source .venv/bin/activate         # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-alembic upgrade head                 # applies the 14-table v2 schema
 
-# 3. Start backend
-uvicorn api.main:app --host 127.0.0.1 --port 8000
-
-# 4. Start frontend (new terminal)
+# frontend
 cd web
 npm install
-npm run dev                          # http://localhost:3000
+cd ..
 ```
 
-**Windows note:** set `PYTHONIOENCODING=utf-8` as a persistent user env var to avoid Kalibr's emoji startup banner crashing on `cp1252`. One-line PowerShell command:
-```powershell
-[Environment]::SetEnvironmentVariable('PYTHONIOENCODING','utf-8','User')
-```
-
----
-
-## Environment variables
-
-Every key is optional for *import time* (the backend starts with warnings), but each agent hard-requires its keys for *execution*. Per the no-dummy-fallback policy, a missing key surfaces as an error state in the UI — not a silent cache substitute.
-
-| Env var | Used by | Source | Required? |
-|---|---|---|---|
-| `DATABASE_URL` | SQLAlchemy | Shared Postgres VPS (`postgresql.ayushojha.com:5432`) — TLS with `?ssl=require` | ✅ always |
-| `OPENAI_API_KEY` | Kalibr router + image-gen | console.openai.com | ✅ required for live runs |
-| `KALIBR_API_KEY` + `KALIBR_TENANT_ID` | Kalibr router | dashboard.kalibr.systems | ✅ required for adaptive routing |
-| `APIFY_TOKEN` | Stages 01 · 02 · 03 · 03.5 | console.apify.com → Settings → Integrations | ✅ required |
-| `APIFY_ACTOR_MEMORY_MB` | ApifyRunner | Set to `512` (default) to stay within Apify's free-tier 8 GB concurrency cap | optional |
-| `MINDS_API_KEY` | Stage 06 | getminds.ai → Settings → API Keys (prefix `minds_`) | ✅ required for live jury |
-| `MINDS_ROUND_2` | Stage 06 | Set to `1` when plan tier ≥ Premium to activate round-2 rebuttals | optional |
-| `NEXT_PUBLIC_API_URL` | Frontend | URL the browser reaches the backend at (default `http://localhost:8000`) | optional for dev |
-| `ANTHROPIC_API_KEY` | hedge path only | console.anthropic.com | unused in default config |
-| `PYTHONIOENCODING` | kalibr CLI / Windows | Set to `utf-8` to avoid emoji-crash on cp1252 consoles | Windows-only |
-
----
-
-## Running a real live run
-
-From the frontend at `http://localhost:3000`:
-
-1. Paste a product URL (e.g. `https://linear.app`).
-2. Submit. Backend creates `run_{uuid}`, frontend redirects to `/run/{id}/1-brand`.
-3. The wizard streams live trace events via SSE. Each stage lights up as the backend finishes it. "Next" enables when the stage's data lands.
-4. Click through the 7 stages. Jury rail accumulates reactions once Stage 06 starts.
-5. Last click goes to `/results/{id}` — the Command Center.
-
-Expected wall-clock: **4–8 minutes** for a full live run (most time in social scraping + image generation).
-Expected cost: **~$0.40–$1.00** per run (image gen dominates; text LLM calls ~$0.02–$0.10).
-
----
-
-## `/demo` — static showcase
-
-The `/demo` routes exist as a visual reference of the wizard flow without any backend dependency. They load `cache/demo-linear.json` client-side. **Do not use for live testing** — they're isolated from production paths by design.
-
----
-
-## Testing
+Create a `.env` from `.env.example`, then start the services:
 
 ```bash
-pytest api/tests/          # backend unit + live smoke tests (skip gracefully w/o keys)
-pytest api/tests/test_events.py api/tests/test_kalibr.py   # fast core tests
+# backend
+uvicorn api.main:app --reload --port 8000
 
-cd web && npm run build    # frontend type-check + production build
+# frontend
+cd web
+npm run dev
 ```
 
-Per-agent live smoke tests live at `api/tests/test_{agent}_live.py`. Each skips unless its required env vars (Apify / OpenAI / Minds / Postgres) are set.
+Local defaults:
+
+- frontend: `http://localhost:3000`
+- backend: `http://localhost:8000`
 
 ---
 
-## Deploy
+## Environment Variables
 
-| Target | Platform | Status |
-|---|---|---|
-| Frontend | Vercel wired to `main` | Configured · `shadowlaunch.ayushojha.com` |
-| Backend | Fly.io / Render (TBD) | Local dev only for the hackathon; production deploy is the next milestone |
-| Database | Shared VPS at `postgresql.ayushojha.com` | Live · 14 tables · direct TLS |
+The important environment variables are:
+
+- `DATABASE_URL`
+- `OPENAI_API_KEY`
+- `KALIBR_API_KEY`
+- `KALIBR_TENANT_ID`
+- `APIFY_TOKEN`
+- `MINDS_API_KEY`
+- `NEXT_PUBLIC_API_URL`
+
+Optional:
+
+- `APIFY_ACTOR_MEMORY_MB`
+- `MINDS_ROUND_2`
+- `ANTHROPIC_API_KEY`
+- `PYTHONIOENCODING` for Windows
+
+See [.env.example](.env.example) for the exact format and notes.
 
 ---
 
-## Specs + docs
+## Documentation
 
-- **[`docs/features.md`](docs/features.md)** — feature-by-feature completion tracker with status per feature (⬜/🟨/✅/⛔)
-- **[`docs/demo-flow.md`](docs/demo-flow.md)** — wizard UX spec (7 stage pages + Command Center)
-- **[`docs/apify-actors.md`](docs/apify-actors.md)** — verified actor registry (auto-updated by the actor-hunt agent)
-- **[`specs.md`](specs.md)** — original v1 hackathon spec. The v2 product pivot (see `docs/features.md` appendix A) replaced the v1 launch-board flow with the current GTM-simulator wizard.
+- [docs/features.md](docs/features.md) - feature tracker for the v2 GTM simulator direction
+- [docs/design.md](docs/design.md) - visual and interaction direction
+- [specs.md](specs.md) - original hackathon spec and earlier product framing
 
 ---
 
-## Credits
+## Why This README Was Reframed
 
-**Ayush Ojha** · [ayushozha@outlook.com](mailto:ayushozha@outlook.com) · [linkedin.com/in/ayushozha](https://linkedin.com/in/ayushozha)
+This project evolved quickly during a hackathon. Earlier versions of the repo described a narrower "wedge, ads, launch board" flow. The current direction is broader and more concrete:
 
-Marketing Agents Hackathon · Entrepreneurs First SF · 2026-04-18.
+- research the company
+- discover competitors
+- analyze social traction
+- generate campaign strategy
+- build a content calendar
+- debate the work with synthetic personas
+- present the final recommendation in a results page
+
+This README is meant to explain that flow in normal language first, and only then point to the underlying code and setup.
