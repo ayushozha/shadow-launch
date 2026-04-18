@@ -2,89 +2,93 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiError, createRun } from "@/lib/api";
+import type { RunInput } from "@/lib/types";
 
 type FieldErrors = {
   product_url?: string;
-  competitor_1?: string;
-  competitor_2?: string;
-  icp_description?: string;
 };
 
-// Loose URL check: scheme is optional, but we need something that looks
-// like a hostname. Strong validation happens server-side once the API lands.
-function isUrlish(value: string): boolean {
+function isHttpUrl(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
   try {
-    const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v}`;
-    const u = new URL(withScheme);
-    return Boolean(u.hostname) && u.hostname.includes(".");
+    const u = new URL(v);
+    return (u.protocol === "http:" || u.protocol === "https:") && Boolean(u.hostname) && u.hostname.includes(".");
   } catch {
     return false;
   }
 }
 
+type Budget = "lean" | "standard" | "premium";
+
 export default function InputForm() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [label, setLabel] = useState("Run Shadow Launch");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting) return;
 
+    setApiError(null);
+
     const fd = new FormData(e.currentTarget);
     const product_url = String(fd.get("product_url") ?? "").trim();
-    const competitor_1 = String(fd.get("competitor_1") ?? "").trim();
-    const competitor_2 = String(fd.get("competitor_2") ?? "").trim();
-    const icp_description = String(fd.get("icp_description") ?? "").trim();
+    const brand_voice_guide_raw = String(fd.get("brand_voice_guide") ?? "").trim();
+    const target_regions_raw = String(fd.get("target_regions") ?? "").trim();
+    const budget_raw = String(fd.get("budget_constraint") ?? "").trim();
 
     const nextErrors: FieldErrors = {};
     if (!product_url) nextErrors.product_url = "Product URL is required.";
-    else if (!isUrlish(product_url))
-      nextErrors.product_url = "Enter a valid URL.";
-
-    if (!competitor_1) nextErrors.competitor_1 = "Competitor URL is required.";
-    else if (!isUrlish(competitor_1))
-      nextErrors.competitor_1 = "Enter a valid URL.";
-
-    if (!competitor_2) nextErrors.competitor_2 = "Competitor URL is required.";
-    else if (!isUrlish(competitor_2))
-      nextErrors.competitor_2 = "Enter a valid URL.";
-
-    if (!icp_description)
-      nextErrors.icp_description = "Describe your ICP in a sentence or two.";
+    else if (!isHttpUrl(product_url))
+      nextErrors.product_url = "Enter a valid http(s) URL.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setSubmitting(true);
-    setLabel("✓ ROUTING TO SIM");
+    const target_regions = target_regions_raw
+      ? target_regions_raw
+          .split(",")
+          .map((r) => r.trim())
+          .filter(Boolean)
+      : null;
 
-    // TODO: replace with POST /api/runs per spec §6.1 once backend lands.
-    // The run id below matches cache/demo-linear.json so the live-run screen
-    // can hydrate from the cached hero run during the hackathon demo.
-    const payload = {
+    const budget_constraint: Budget | null =
+      budget_raw === "lean" || budget_raw === "standard" || budget_raw === "premium"
+        ? (budget_raw as Budget)
+        : null;
+
+    const payload: RunInput = {
       product_url,
-      competitor_urls: [competitor_1, competitor_2],
-      icp_description,
+      brand_voice_guide: brand_voice_guide_raw || null,
+      target_regions,
+      budget_constraint,
     };
-    if (typeof window !== "undefined") {
-      try {
-        window.sessionStorage.setItem(
-          "shadow_launch_last_input",
-          JSON.stringify(payload),
-        );
-      } catch {
-        // sessionStorage may be unavailable in private mode; non-blocking.
+
+    setSubmitting(true);
+    setLabel("DISPATCHING…");
+
+    try {
+      const { run_id } = await createRun(payload);
+      setLabel("✓ RUNNING · REDIRECTING");
+      // Give the label flip a beat before navigating.
+      window.setTimeout(() => {
+        router.push(`/run/${encodeURIComponent(run_id)}`);
+      }, 350);
+    } catch (err) {
+      setSubmitting(false);
+      setLabel("Run Shadow Launch");
+      if (err instanceof ApiError) {
+        setApiError(`${err.status} · ${err.statusText || "Error"} — ${err.body || "The backend rejected the request."}`);
+      } else if (err instanceof Error) {
+        setApiError(err.message || "Could not reach the Shadow Launch backend.");
+      } else {
+        setApiError("Unknown error. Could not reach the Shadow Launch backend.");
       }
     }
-
-    // Give the label flip a beat before navigating.
-    window.setTimeout(() => {
-      router.push("/run/demo-linear-001");
-    }, 450);
   }
 
   const inputBase =
@@ -94,14 +98,14 @@ export default function InputForm() {
     <form
       onSubmit={onSubmit}
       noValidate
-      className="access-form mx-auto flex w-full max-w-[560px] flex-col gap-3 border border-[var(--ink)] bg-[rgba(255,252,244,0.6)] p-5 text-left"
+      className="access-form mx-auto flex w-full max-w-[620px] flex-col gap-4 border border-[var(--ink)] bg-[rgba(255,252,244,0.6)] p-5 text-left"
     >
       <div>
         <label
           htmlFor="product_url"
           className="mb-2 block font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--muted)]"
         >
-          Product URL
+          Product URL <span className="text-[var(--accent)]">*</span>
         </label>
         <input
           id="product_url"
@@ -120,77 +124,71 @@ export default function InputForm() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div>
+        <label
+          htmlFor="brand_voice_guide"
+          className="mb-2 block font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--muted)]"
+        >
+          Brand voice guide <span className="opacity-60">· optional</span>
+        </label>
+        <textarea
+          id="brand_voice_guide"
+          name="brand_voice_guide"
+          rows={3}
+          placeholder="Optional — paste 1-2 paragraphs of tone notes"
+          className={`${inputBase} resize-vertical min-h-[96px] leading-[1.5]`}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label
-            htmlFor="competitor_1"
+            htmlFor="target_regions"
             className="mb-2 block font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--muted)]"
           >
-            Competitor URL 1
+            Target regions <span className="opacity-60">· optional</span>
           </label>
           <input
-            id="competitor_1"
-            name="competitor_1"
-            type="url"
-            required
-            placeholder="https://competitor-a.com"
+            id="target_regions"
+            name="target_regions"
+            type="text"
+            placeholder="e.g. US, EU, APAC"
             autoComplete="off"
             className={inputBase}
-            aria-invalid={Boolean(errors.competitor_1)}
           />
-          {errors.competitor_1 && (
-            <p className="mt-1 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--accent)]">
-              {errors.competitor_1}
-            </p>
-          )}
         </div>
         <div>
           <label
-            htmlFor="competitor_2"
+            htmlFor="budget_constraint"
             className="mb-2 block font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--muted)]"
           >
-            Competitor URL 2
+            Budget <span className="opacity-60">· optional</span>
           </label>
-          <input
-            id="competitor_2"
-            name="competitor_2"
-            type="url"
-            required
-            placeholder="https://competitor-b.com"
-            autoComplete="off"
-            className={inputBase}
-            aria-invalid={Boolean(errors.competitor_2)}
-          />
-          {errors.competitor_2 && (
-            <p className="mt-1 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--accent)]">
-              {errors.competitor_2}
-            </p>
-          )}
+          <select
+            id="budget_constraint"
+            name="budget_constraint"
+            defaultValue=""
+            className={`${inputBase} cursor-pointer`}
+          >
+            <option value="">Unspecified</option>
+            <option value="lean">Lean</option>
+            <option value="standard">Standard</option>
+            <option value="premium">Premium</option>
+          </select>
         </div>
       </div>
 
-      <div>
-        <label
-          htmlFor="icp_description"
-          className="mb-2 block font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--muted)]"
+      {apiError && (
+        <div
+          role="alert"
+          className="border border-[var(--accent)] bg-[rgba(227,51,18,0.08)] p-4 font-mono text-[11px] leading-[1.6] tracking-[0.04em] text-[var(--accent-ink)]"
         >
-          ICP description
-        </label>
-        <textarea
-          id="icp_description"
-          name="icp_description"
-          required
-          rows={4}
-          placeholder="Series A-C B2B SaaS buyers, head of product or ops, team of 30-300, feels the wedge pain weekly…"
-          className={`${inputBase} resize-vertical min-h-[112px] leading-[1.5]`}
-          aria-invalid={Boolean(errors.icp_description)}
-        />
-        {errors.icp_description && (
-          <p className="mt-1 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--accent)]">
-            {errors.icp_description}
-          </p>
-        )}
-      </div>
+          <div className="mb-1 text-[10px] tracking-[0.18em] uppercase text-[var(--accent)]">
+            Request failed
+          </div>
+          <div className="break-words whitespace-pre-wrap">{apiError}</div>
+        </div>
+      )}
 
       <button
         type="submit"

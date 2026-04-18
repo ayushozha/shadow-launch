@@ -1,140 +1,357 @@
-// Shape of the cached Run JSON. Mirrors specs.md §5 and cache/demo-linear.json.
-// Keep in lockstep with the backend Pydantic models when those land.
+// TypeScript mirror of api/models.py (v2 · GTM Strategy Simulator).
+// Keep in lockstep with the Pydantic source of truth.
 
-export type TraceKind = "info" | "ok" | "warn" | "error";
+// ---------------------------------------------------------------------------
+// Primitives
+// ---------------------------------------------------------------------------
+
+export type Platform =
+  | "linkedin"
+  | "twitter"
+  | "facebook"
+  | "instagram"
+  | "tiktok";
+
+export type Channel =
+  | "linkedin"
+  | "twitter"
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "blog"
+  | "email"
+  | "youtube";
+
+export type RunStatus = "queued" | "running" | "completed" | "failed";
+
+export type TraceKind = "info" | "ok" | "warn" | "error" | "cost";
+
+export type PersonaId =
+  | "marketing_vp"
+  | "cfo_skeptic"
+  | "engineering_lead"
+  | "target_end_user"
+  | "social_media_manager"
+  | "pr_brand_authority";
+
+export type TargetType = "angle" | "asset" | "post" | "slot";
+export type DebateRound = 1 | 2;
+
+export const PERSONA_WEIGHTS: Record<PersonaId, number> = {
+  marketing_vp: 0.2,
+  cfo_skeptic: 0.25,
+  engineering_lead: 0.15,
+  target_end_user: 0.2,
+  social_media_manager: 0.1,
+  pr_brand_authority: 0.1,
+};
+
+export const PERSONA_LABELS: Record<PersonaId, string> = {
+  marketing_vp: "Marketing VP",
+  cfo_skeptic: "CFO Skeptic",
+  engineering_lead: "Engineering Lead",
+  target_end_user: "Target End-User",
+  social_media_manager: "Social Media Manager",
+  pr_brand_authority: "PR / Brand Authority",
+};
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+
+export interface RunInput {
+  product_url: string;
+  brand_voice_guide?: string | null;
+  target_regions?: string[] | null;
+  budget_constraint?: "lean" | "standard" | "premium" | null;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 01 — Product research
+// ---------------------------------------------------------------------------
+
+export interface ProductProfile {
+  product_url: string;
+  brand_name: string;
+  one_liner: string;
+  category: string;
+  positioning_claims: string[];
+  implicit_audience: string;
+  tone_inventory: string[];
+  messaging_gaps: string[];
+  kalibr_trace_id?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 02 — Competitor discovery
+// ---------------------------------------------------------------------------
+
+export interface Competitor {
+  competitor_id: string;
+  url: string;
+  name: string;
+  positioning: string;
+  relevance_score: number;
+  discovery_source: "google_serp" | "product_hunt" | "g2" | "manual";
+  selected: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 03 — Social scraping
+// ---------------------------------------------------------------------------
+
+export interface SocialPost {
+  post_id?: string;
+  url?: string;
+  content?: string;
+  posted_at?: string;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  views?: number;
+  engagement?: number;
+  [k: string]: unknown;
+}
+
+export interface SocialSnapshot {
+  snapshot_id: string;
+  competitor_id: string;
+  platform: Platform;
+  handle?: string | null;
+  followers?: number | null;
+  avg_engagement_rate?: number | null;
+  posting_cadence_per_week?: number | null;
+  top_posts: SocialPost[];
+  last_scraped_at: string;
+  status: "ok" | "error" | "not_found";
+  error_detail?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 03.5 — Market discourse
+// ---------------------------------------------------------------------------
+
+export interface DiscourseItem {
+  source: "reddit" | "trustpilot";
+  url?: string | null;
+  title?: string | null;
+  body: string;
+  sentiment_score?: number | null;
+  upvotes?: number | null;
+  rating?: number | null;
+}
+
+export interface MarketDiscourse {
+  run_id: string;
+  reddit_items: DiscourseItem[];
+  trustpilot_items: DiscourseItem[];
+  top_complaints: string[];
+  top_desires: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Stage 04 — Campaign + assets
+// ---------------------------------------------------------------------------
+
+export interface ImageAsset {
+  asset_id: string;
+  campaign_angle_id: string;
+  prompt: string;
+  model: string;
+  media_type: "image/png" | "image/jpeg" | "image/webp";
+  width?: number | null;
+  height?: number | null;
+  kalibr_trace_id?: string | null;
+  asset_url?: string | null;
+}
+
+export interface CampaignAngle {
+  angle_id: string;
+  hook: string;
+  positioning: string;
+  channel_mix: Channel[];
+  rationale: string;
+  evidence_competitor_ids: string[];
+  asset_ids: string[];
+}
+
+export interface Campaign {
+  campaign_id: string;
+  run_id: string;
+  angles: CampaignAngle[];
+}
+
+// ---------------------------------------------------------------------------
+// Stage 05 — Content calendar
+// ---------------------------------------------------------------------------
+
+export interface CalendarSlot {
+  slot_id: string;
+  day: number;
+  channel: Channel;
+  post_type: "image" | "text" | "link" | "video";
+  copy: string;
+  asset_id?: string | null;
+  posting_time: string;
+  rationale: string;
+}
+
+export interface ContentCalendar {
+  calendar_id: string;
+  run_id: string;
+  days_span: number;
+  slots: CalendarSlot[];
+}
+
+// ---------------------------------------------------------------------------
+// Stage 06 — Persona debate
+// ---------------------------------------------------------------------------
+
+export interface PersonaReaction {
+  reaction_id: string;
+  run_id: string;
+  persona_id: PersonaId;
+  target_type: TargetType;
+  target_id: string;
+  round: DebateRound;
+  score: number;
+  quote: string;
+  top_objection?: string | null;
+  rebuts_persona_id?: PersonaId | null;
+}
+
+export interface Verdict {
+  verdict_id: string;
+  run_id: string;
+  target_type: TargetType;
+  target_id: string;
+  consensus_score: number;
+  action_required: boolean;
+  dissenting_personas: PersonaId[];
+  why: string;
+}
+
+// ---------------------------------------------------------------------------
+// Instrumentation
+// ---------------------------------------------------------------------------
 
 export interface TraceEvent {
-  t: string; // ISO datetime or relative offset string from the cached run
+  t: string;
+  stage?: number | null;
   agent: string;
   message: string;
   kind: TraceKind;
-}
-
-export interface Source {
-  actor: string;
-  status: string;
-  docs_pulled?: number;
-  elapsed_ms?: number;
-  summary: string;
-}
-
-export interface MarketTwin {
-  positioning_map: Record<string, string[]>;
-  gaps: string[];
-  sources: Source[];
-}
-
-export interface Wedge {
-  id: string; // w1 | w2 | w3
-  headline: string;
-  thesis: string;
-  evidence: string[];
-}
-
-export type JurorId = "champion" | "economic" | "blocker" | "skeptic";
-
-export interface JurorReaction {
-  juror_id: JurorId;
-  wedge_id: string;
-  quote: string;
-  score: number; // -1 to +1
-  top_objection?: string;
-}
-
-export interface Dissent {
-  juror_id: JurorId;
-  objection: string;
-}
-
-export interface Deliberation {
-  rounds: number;
-  reactions: JurorReaction[];
-  consensus_vector: Record<string, number>; // wedge_id -> weighted score
-  dissent_log: Dissent[];
-}
-
-export interface WedgeVerdict {
-  wedge_id: string;
-  final_score: number;
-  runner_up_delta: number;
-  why_it_won: string;
-  surviving_objections: string[];
-}
-
-export interface AdVariant {
-  headline: string;
-  body: string;
-  cta: string;
-  visual_brief: string;
-  pixero_url: string | null;
-}
-
-export interface Task {
-  id?: string;
-  title: string;
-  owner: string;
-  day?: number;
-  due?: string;
-  notes?: string;
-}
-
-export interface Milestone {
-  day: number;
-  label: string;
-}
-
-export interface LaunchBoard {
-  tasks: Task[];
-  timeline: Milestone[];
-  executive_summary: string;
-  rory_board_url: string | null;
+  kalibr_model?: string | null;
+  kalibr_cost_delta_usd?: number | null;
+  meta?: Record<string, unknown> | null;
 }
 
 export interface KalibrEvent {
-  t?: string;
-  kind: string; // e.g. "reroute", "retry", "recover"
-  from_model?: string;
-  to_model?: string;
-  reason?: string;
-  recovered?: boolean;
+  event_id: string;
+  t: string;
+  goal: string;
+  from_model?: string | null;
+  to_model?: string | null;
+  failure_category?: string | null;
+  recovered?: boolean | null;
+  cost_usd_delta?: number | null;
+  trace_id?: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Top-level Run
+// ---------------------------------------------------------------------------
 
 export interface Run {
   run_id: string;
+  status: RunStatus;
   created_at: string;
-  hero_target?: string;
-  runtime_seconds?: number;
-  confidence?: number;
-  input: {
-    product_url: string;
-    competitor_urls: string[];
-    icp_description: string;
-  };
-  twin: MarketTwin;
-  wedges: Wedge[];
-  deliberation: Deliberation;
-  winner: WedgeVerdict;
-  ads: AdVariant[];
-  launch_board: LaunchBoard;
+  completed_at?: string | null;
+  cost_usd_total: number;
+  kalibr_trace_capsule_id?: string | null;
+
+  input: RunInput;
+  product_profile?: ProductProfile | null;
+  competitors: Competitor[];
+  social_snapshots: SocialSnapshot[];
+  discourse?: MarketDiscourse | null;
+  campaign?: Campaign | null;
+  calendar?: ContentCalendar | null;
+  reactions: PersonaReaction[];
+  verdicts: Verdict[];
   trace: TraceEvent[];
   kalibr_events: KalibrEvent[];
 }
 
-// Stage card metadata — drives the left column of the Live Run View.
-export type StageId = "twin" | "wedges" | "jury" | "campaign" | "plan";
+// ---------------------------------------------------------------------------
+// Stages — for the Live Run View
+// ---------------------------------------------------------------------------
+
+export type StageId =
+  | "product"
+  | "competitors"
+  | "social"
+  | "discourse"
+  | "campaign"
+  | "calendar"
+  | "debate";
 
 export interface StageMeta {
   id: StageId;
-  num: string; // e.g. "STAGE 01"
-  title: string; // display title
-  agent: string; // agent name in the trace (e.g. "scout", "cartographer")
-  sponsor: string; // sponsor attribution (Apify / Claude / Minds AI / Pixero / Rory)
+  num: string;
+  title: string;
+  agent: string;
+  sponsor: string;
 }
 
 export const STAGES: StageMeta[] = [
-  { id: "twin", num: "STAGE 01", title: "Market twin", agent: "scout", sponsor: "Apify" },
-  { id: "wedges", num: "STAGE 02", title: "Wedge discovery", agent: "cartographer", sponsor: "Claude" },
-  { id: "jury", num: "STAGE 03", title: "Jury deliberation", agent: "clerk", sponsor: "Minds AI" },
-  { id: "campaign", num: "STAGE 04", title: "Campaign manufacture", agent: "producer", sponsor: "Pixero" },
-  { id: "plan", num: "STAGE 05", title: "Launch plan", agent: "scribe", sponsor: "Rory" },
+  {
+    id: "product",
+    num: "STAGE 01",
+    title: "Product research",
+    agent: "product_researcher",
+    sponsor: "Apify + OpenAI",
+  },
+  {
+    id: "competitors",
+    num: "STAGE 02",
+    title: "Competitor discovery",
+    agent: "competitor_discoverer",
+    sponsor: "Apify + Kalibr",
+  },
+  {
+    id: "social",
+    num: "STAGE 03",
+    title: "Social analysis",
+    agent: "social_scraper",
+    sponsor: "Apify · 5 platforms",
+  },
+  {
+    id: "discourse",
+    num: "STAGE 03.5",
+    title: "Market discourse",
+    agent: "market_discourse",
+    sponsor: "Apify · Reddit + Trustpilot",
+  },
+  {
+    id: "campaign",
+    num: "STAGE 04",
+    title: "Campaign generation",
+    agent: "campaign_generator",
+    sponsor: "OpenAI · gpt-4o + gpt-image-1",
+  },
+  {
+    id: "calendar",
+    num: "STAGE 05",
+    title: "Content calendar",
+    agent: "calendar_builder",
+    sponsor: "OpenAI via Kalibr",
+  },
+  {
+    id: "debate",
+    num: "STAGE 06",
+    title: "Persona debate",
+    agent: "persona_debater",
+    sponsor: "Minds AI · 6-persona panel",
+  },
 ];

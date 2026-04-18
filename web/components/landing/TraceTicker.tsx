@@ -1,12 +1,16 @@
 const TRACE_ITEMS: { k: string; msg: string }[] = [
-  { k: "APIFY", msg: "scanning competitor_a.com / 412 signals indexed" },
-  { k: "MINDS", msg: "instantiating buyer_clone: economic_buyer" },
-  { k: "KALIBR", msg: "rerouting creative_gen after timeout on model_1" },
-  { k: "PIXERO", msg: "compiling 42 meta variants for wedge_02" },
-  { k: "RORY", msg: "launch_board assembled / 8 owners assigned" },
-  { k: "APIFY", msg: "harvesting g2 reviews / sentiment delta -0.18" },
-  { k: "MINDS", msg: "cfo_clone raises objection: payback_period" },
-  { k: "JURY", msg: "deliberation round 3 / consensus at 0.74" },
+  { k: "APIFY", msg: "crawling product_url / 412 signals indexed" },
+  { k: "APIFY", msg: "SERP sweep → 9 competitors discovered / 5 selected" },
+  { k: "APIFY", msg: "25 social actors dispatched · 8 in flight" },
+  { k: "KALIBR", msg: "goal=research_synthesis → gpt-4o" },
+  { k: "OPENAI", msg: "image_gen → 4 assets for angle_02" },
+  { k: "KALIBR", msg: "rerouted image_gen: gpt-image-1 → dall-e-3" },
+  { k: "CALENDAR", msg: "14 days × 5 channels / 28 slots sequenced" },
+  { k: "MINDS", msg: "panel_6 instantiated / cfo_skeptic spark ready" },
+  { k: "MINDS", msg: "cfo_skeptic objection: payback_period_unclear" },
+  { k: "MINDS", msg: "round_2 rebuttal → marketing_vp vs cfo_skeptic" },
+  { k: "VERDICT", msg: "angle_02 consensus 0.78 · action_required=false" },
+  { k: "KALIBR", msg: "run cost $4.18 · 3 reroutes · 0 interventions" },
 ];
 
 export default function TraceTicker() {

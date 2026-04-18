@@ -91,6 +91,49 @@ _DEFAULT_PATHS: dict[str, list[str]] = {
 _FALLBACK_PATH: list[str] = ["gpt-4o-mini", "gpt-4o"]
 
 
+# ---------------------------------------------------------------------------
+# Cost estimation tables ($ per 1K tokens). Used when the SDK response
+# doesn't carry an explicit cost field. Values are list-price USD from the
+# OpenAI pricing page at build time; close enough for a demo cost ticker.
+# ---------------------------------------------------------------------------
+
+_OPENAI_COST_PER_1K_INPUT: dict[str, float] = {
+    "gpt-4o-mini": 0.00015,
+    "gpt-4o": 0.0025,
+}
+_OPENAI_COST_PER_1K_OUTPUT: dict[str, float] = {
+    "gpt-4o-mini": 0.0006,
+    "gpt-4o": 0.01,
+}
+
+
+def _estimate_cost_usd(model_id: str, response: Any) -> float | None:
+    """Estimate $-cost of a completion from usage tokens.
+
+    Returns `None` if we can't find usage info — the caller then falls back
+    to not attaching a cost delta to the trace. Cheap lookup by model prefix
+    so claude-* / custom-routes just return `None` (we don't price them here).
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    prompt_tokens = (
+        getattr(usage, "prompt_tokens", None)
+        or getattr(usage, "input_tokens", None)
+        or 0
+    )
+    completion_tokens = (
+        getattr(usage, "completion_tokens", None)
+        or getattr(usage, "output_tokens", None)
+        or 0
+    )
+    in_rate = _OPENAI_COST_PER_1K_INPUT.get(model_id)
+    out_rate = _OPENAI_COST_PER_1K_OUTPUT.get(model_id)
+    if in_rate is None or out_rate is None:
+        return None
+    return (prompt_tokens / 1000.0) * in_rate + (completion_tokens / 1000.0) * out_rate
+
+
 def _paths_for(goal: str, override: list[str] | None) -> list[str]:
     if override:
         return list(override)
@@ -281,12 +324,14 @@ class KalibrRouter:
                         to_model=next_model,
                         failure_category=str(exc)[:120],
                         recovered=False,
+                        cost_usd_delta=0.0,
                     )
                 )
                 continue
 
             # Success. Extract text, report, and maybe log a reroute.
             text = _extract_text(response)
+            cost_usd = _estimate_cost_usd(model_id, response)
 
             score = 1.0
             if success_when is not None:
@@ -311,18 +356,23 @@ class KalibrRouter:
                         to_model=model_id,
                         failure_category="reroute",
                         recovered=True,
+                        cost_usd_delta=cost_usd,
                     )
                 )
                 await self._bus.emit(
                     agent="kalibr",
                     message=f"recovered on {model_id} after reroute from {first_path}",
-                    kind="ok",
+                    kind="cost" if cost_usd else "ok",
+                    kalibr_model=model_id,
+                    kalibr_cost_delta_usd=cost_usd,
                 )
             else:
                 await self._bus.emit(
                     agent="kalibr",
                     message=f"{model_id} ok (score={score})",
-                    kind="ok",
+                    kind="cost" if cost_usd else "ok",
+                    kalibr_model=model_id,
+                    kalibr_cost_delta_usd=cost_usd,
                 )
 
             return text
@@ -355,11 +405,11 @@ class KalibrRouter:
         for idx, model_id in enumerate(paths):
             try:
                 if model_id.startswith("claude"):
-                    text = await asyncio.to_thread(
+                    text, raw_response = await asyncio.to_thread(
                         _call_anthropic_direct, model_id, messages, max_tokens
                     )
                 else:
-                    text = await asyncio.to_thread(
+                    text, raw_response = await asyncio.to_thread(
                         _call_openai_direct, model_id, messages, max_tokens
                     )
             except Exception as exc:  # noqa: BLE001
@@ -379,10 +429,12 @@ class KalibrRouter:
                         to_model=next_model,
                         failure_category=f"fallback:{str(exc)[:110]}",
                         recovered=False,
+                        cost_usd_delta=0.0,
                     )
                 )
                 continue
 
+            cost_usd = _estimate_cost_usd(model_id, raw_response)
             if model_id != first_path:
                 self._events.append(
                     KalibrEvent(
@@ -393,12 +445,15 @@ class KalibrRouter:
                         to_model=model_id,
                         failure_category="reroute-fallback",
                         recovered=True,
+                        cost_usd_delta=cost_usd,
                     )
                 )
             await self._bus.emit(
                 agent="kalibr",
                 message=f"[fallback] {model_id} ok",
-                kind="ok",
+                kind="cost" if cost_usd else "ok",
+                kalibr_model=model_id,
+                kalibr_cost_delta_usd=cost_usd,
             )
             return text
 
@@ -418,7 +473,7 @@ class KalibrRouter:
 
 def _call_anthropic_direct(
     model_id: str, messages: list[dict[str, str]], max_tokens: int
-) -> str:
+) -> tuple[str, Any]:
     import anthropic
 
     # Anthropic wants system as a top-level arg, not a message.
@@ -434,14 +489,15 @@ def _call_anthropic_direct(
         system=system,
         messages=non_system,
     )
-    return "".join(
+    text = "".join(
         block.text for block in resp.content if getattr(block, "type", None) == "text"
     )
+    return text, resp
 
 
 def _call_openai_direct(
     model_id: str, messages: list[dict[str, str]], max_tokens: int
-) -> str:
+) -> tuple[str, Any]:
     from openai import OpenAI
 
     client = OpenAI()
@@ -450,7 +506,7 @@ def _call_openai_direct(
         messages=messages,  # type: ignore[arg-type]
         max_tokens=max_tokens,
     )
-    return resp.choices[0].message.content or ""
+    return resp.choices[0].message.content or "", resp
 
 
 # ---------------------------------------------------------------------------

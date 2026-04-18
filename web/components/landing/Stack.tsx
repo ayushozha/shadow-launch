@@ -6,27 +6,22 @@ const TOOLS: Tool[] = [
   {
     role: "Research Dept.",
     name: "Apify",
-    desc: "Six actors in parallel harvest the public web. Competitor pages, reviews, changelogs, discourse. The twin is only as honest as its intake.",
+    desc: "Crawls your product and the SERP around it, then fans 25 social actors across LinkedIn, X, Facebook, Instagram, and TikTok in parallel. The market map is only as honest as its intake.",
   },
   {
-    role: "Voice Dept.",
-    name: "Minds AI",
-    desc: "High-fidelity buyer clones composited from real public voices. Not a chatbot. A jury that holds a persona across a multi-turn debate.",
-  },
-  {
-    role: "Media Dept.",
-    name: "Pixero",
-    desc: "Turns the winning wedge into Meta-ready creative and a full campaign strategy. Only pre-tested variants reach production.",
+    role: "Creative Dept.",
+    name: "OpenAI",
+    desc: "gpt-4o for positioning, angles, post copy, and calendar logic. gpt-image-1 and dall-e-3 for real creative assets — actual files the panel can react to.",
   },
   {
     role: "Operations",
     name: "Kalibr",
-    desc: "The nervous system. Adaptive routing, automatic recovery, model selection that sharpens across runs. Keeps the agent loop alive under real failure.",
+    desc: "The nervous system. Adaptive routing across the model ladder, automatic recovery, per-asset model attribution, cross-run learning, and a live cost ticker on every run.",
   },
   {
-    role: "Mission Control",
-    name: "Rory",
-    desc: "The human layer. Owners, timelines, executive summary, launch board. You end with a plan you can ship on Monday.",
+    role: "Voice Dept.",
+    name: "Minds AI",
+    desc: "Six persona sparks. Panels API drives round-one reactions and round-two rebuttals. Weighted consensus flags the assets that need a revision before launch day.",
   },
 ];
 
@@ -47,7 +42,7 @@ export default function Stack() {
         . Every tool does load-bearing work.
       </SectionHead>
 
-      <div className="stack-grid reveal grid grid-cols-1 border-t border-[rgba(236,228,210,0.2)] md:grid-cols-2 xl:grid-cols-5">
+      <div className="stack-grid reveal grid grid-cols-1 border-t border-[rgba(236,228,210,0.2)] md:grid-cols-2 xl:grid-cols-4">
         {TOOLS.map((t, i) => (
           <div
             key={i}

@@ -9,19 +9,20 @@ type Line = {
 };
 
 const LINES: Line[] = [
-  { ts: "[00:00]", body: <><span className="text-[var(--accent)]">init</span> shadow_launch.run()</> },
-  { ts: "[00:03]", body: <>apify → harvesting 6 actors</> },
-  { ts: "[00:11]", body: <>market_twin assembled / n=847</> },
-  { ts: "[00:14]", body: <>wedge candidates surfaced → 3</> },
-  { ts: "[00:18]", body: <>minds → jury instantiating</> },
-  { ts: "[00:26]", body: <>jury.deliberate(round=1)</> },
-  { ts: "[00:41]", body: <>cfo: <span className="text-[var(--accent)]">&quot;payback unclear&quot;</span></> },
-  { ts: "[00:52]", body: <>champion: <span className="text-[var(--accent)]">&quot;this is the angle&quot;</span></> },
-  { ts: "[01:07]", body: <>wedge_02 consensus 0.81</> },
-  { ts: "[01:11]", body: <>pixero → 42 variants generated</> },
-  { ts: "[01:19]", body: <>kalibr → rerouted 4 / recovered 4</> },
-  { ts: "[01:22]", body: <>rory → launch_board committed</> },
-  { ts: "[01:24]", body: <>✓ RUN COMPLETE / cost = $3.41</>, ok: true },
+  { ts: "[00:00]", body: <><span className="text-[var(--accent)]">init</span> shadow_launch.run(product_url)</> },
+  { ts: "[00:04]", body: <>apify → crawling product + SERP</> },
+  { ts: "[00:12]", body: <>product_profile synthesized / 7 claims</> },
+  { ts: "[00:18]", body: <>competitor_discovery → 5 selected of 9</> },
+  { ts: "[00:24]", body: <>apify → 25 social actors dispatched</> },
+  { ts: "[00:52]", body: <>social_snapshots / 25 / 25 ok</> },
+  { ts: "[01:01]", body: <>kalibr → gpt-4o · angles × 3</> },
+  { ts: "[01:18]", body: <>openai:image → 12 assets generated</> },
+  { ts: "[01:29]", body: <>calendar → 14 days · 28 slots</> },
+  { ts: "[01:34]", body: <>minds → panel of 6 instantiated</> },
+  { ts: "[01:47]", body: <>cfo_skeptic: <span className="text-[var(--accent)]">&quot;payback unclear&quot;</span></> },
+  { ts: "[01:58]", body: <>marketing_vp: <span className="text-[var(--accent)]">&quot;angle 02 lands&quot;</span></> },
+  { ts: "[02:11]", body: <>verdicts → 22 endorsed / 4 flagged</> },
+  { ts: "[02:14]", body: <>✓ RUN COMPLETE / cost = $4.18</>, ok: true },
 ];
 
 export default function HeroReadout() {
@@ -45,7 +46,7 @@ export default function HeroReadout() {
     <div className="hero-side relative self-end animate-[floatIn_1s_cubic-bezier(0.2,0.7,0.2,1)_0.3s_both]">
       <div className="readout relative border border-[var(--rule)] bg-[rgba(255,252,244,0.5)]">
         <div className="readout-header flex items-center justify-between border-b border-[var(--rule)] bg-[var(--ink)] px-[14px] py-[10px] text-[var(--paper)]">
-          <span className="font-mono text-[10px] tracking-[0.2em]">SIM_RUN / 004-A</span>
+          <span className="font-mono text-[10px] tracking-[0.2em]">SIM_RUN / GTM-012</span>
           <div className="flex gap-[5px]">
             <span className="block h-[7px] w-[7px] rounded-full bg-[var(--accent)]" />
             <span className="block h-[7px] w-[7px] rounded-full bg-[var(--accent)]" />
@@ -56,7 +57,7 @@ export default function HeroReadout() {
         <div
           ref={rootRef}
           className="readout-body px-[14px] py-[18px] font-mono text-[11px] leading-[1.9] text-[var(--ink-soft)]"
-          style={{ minHeight: 340 }}
+          style={{ minHeight: 360 }}
         >
           {LINES.map((line, i) => (
             <span key={i} className="line block opacity-0">
@@ -75,8 +76,8 @@ export default function HeroReadout() {
         </div>
 
         <div className="readout-footer flex justify-between border-t border-[var(--rule)] px-[14px] py-[10px] font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--muted)]">
-          <span>runtime · 00:01:24</span>
-          <span>confidence · 0.81</span>
+          <span>runtime · 00:02:14</span>
+          <span>consensus · 0.78</span>
         </div>
 
         <div

@@ -11,22 +11,22 @@ type Item = {
 const ITEMS: Item[] = [
   {
     rank: "01",
-    title: "Speed as a feature.",
-    body: "The category leaders ship quarterly. We ship nightly. Credible, but underweight with the economic buyer.",
+    title: "Ship-speed claim.",
+    body: "Engineering Lead endorses. CFO Skeptic blocks until the ROI math lands. Social Media Manager flags repeat cadence on LinkedIn.",
     score: "0.52",
   },
   {
     rank: "02",
-    title: "The last tool you buy in this category.",
-    body: "Reframes the purchase as a consolidation, not an addition. Champion loves the internal story. Skeptic grudgingly agrees. Jury converges fastest here.",
-    score: "0.81",
+    title: "The consolidation play.",
+    body: "Reframes the purchase as replacing three tools, not adding one. CFO swings positive. Target End-User echoes the hook without prompting. Panel converges fastest here.",
+    score: "0.78",
     winner: true,
   },
   {
     rank: "03",
-    title: "Built for the team of one.",
-    body: "Resonates narrowly. Plays well to solopreneurs but the blocker flags it as a toy in enterprise conversations.",
-    score: "0.44",
+    title: "Swipe at the incumbent.",
+    body: "Marketing VP loves it for earned media. PR Authority flags brand risk. Engineering Lead calls the claim unverifiable. Consensus splits.",
+    score: "0.41",
   },
 ];
 
@@ -36,13 +36,13 @@ export default function Wedge() {
       id="wedge"
       className="wedge-section relative border-b border-[var(--rule)] bg-[var(--paper-deep)] px-10 py-24"
     >
-      <SectionHead marker="§04 · The Wedge">
-        Three positioning angles. The jury{" "}
+      <SectionHead marker="§04 · The Debate">
+        Three campaign angles. The panel{" "}
         <em
           className="italic text-[var(--accent)]"
           style={{ fontVariationSettings: '"opsz" 60, "wght" 360, "SOFT" 80' }}
         >
-          picks one
+          converges on one
         </em>
         .
       </SectionHead>
@@ -101,7 +101,7 @@ export default function Wedge() {
               fontFamily="var(--font-mono)" fontSize="10"
               fill="#0c0c0a" letterSpacing="2"
             >
-              WEDGE 02 · SELECTED
+              ANGLE 02 · SELECTED
             </text>
             {/* center label */}
             <text
@@ -109,18 +109,18 @@ export default function Wedge() {
               fontFamily="var(--font-fraunces)" fontStyle="italic"
               fontSize="16" fill="#6a6454"
             >
-              market surface
+              weighted consensus
             </text>
             <text
               x="200" y="272" textAnchor="middle"
               fontFamily="var(--font-mono)" fontSize="9"
               fill="#6a6454" letterSpacing="1.5"
             >
-              n = 847 signals
+              6 personas · round 2
             </text>
             {/* score ticks */}
-            <text x="200" y="32" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="9" fill="rgba(12,12,10,0.4)">0.81</text>
-            <text x="354" y="136" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="9" fill="rgba(12,12,10,0.4)">0.44</text>
+            <text x="200" y="32" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="9" fill="rgba(12,12,10,0.4)">0.78</text>
+            <text x="354" y="136" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="9" fill="rgba(12,12,10,0.4)">0.41</text>
             <text x="46" y="136" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="9" fill="rgba(12,12,10,0.4)">0.52</text>
           </svg>
         </div>
@@ -173,7 +173,7 @@ export default function Wedge() {
                 >
                   {item.score}
                 </span>
-                <span>jury score</span>
+                <span>consensus</span>
               </div>
             </div>
           ))}

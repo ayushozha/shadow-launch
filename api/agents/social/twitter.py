@@ -1,10 +1,14 @@
 """X / Twitter scraper adapter (Stage 03).
 
-Primary actor: `apidojo/twitter-scraper-lite`
-Alternate:    `apify/twitter-scraper`
+Primary actor: `kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`
 
-Actor input shape (approximate):
-    {"twitterHandles": ["<handle>"], "maxTweets": 30}
+This actor is the only currently-verified pay-per-event Twitter scraper that
+returns REAL tweet content on a Free-tier Apify plan. `apidojo/twitter-scraper-lite`
+and even the full `apidojo/tweet-scraper` return a `{noResults: true}` placeholder
+on the free plan.
+
+Actor input shape:
+    {"from": "<handle>", "maxItems": 30, "queryType": "Latest"}
 """
 
 from __future__ import annotations
@@ -43,9 +47,9 @@ async def scrape(
         return SocialSnapshot(**snapshot_base, status="not_found", handle=None)
 
     run_input: dict[str, Any] = {
-        "twitterHandles": [handle],
-        "maxTweets": 30,
-        "sort": "Latest",
+        "from": handle,
+        "maxItems": 30,
+        "queryType": "Latest",
     }
 
     try:

@@ -27,29 +27,29 @@ export default function AccessCta() {
           className="mb-6 font-serif"
           style={{
             fontVariationSettings: '"opsz" 144, "wght" 400, "SOFT" 40',
-            fontSize: "clamp(44px, 6vw, 88px)",
-            lineHeight: 0.96,
+            fontSize: "clamp(40px, 5.4vw, 80px)",
+            lineHeight: 0.98,
             letterSpacing: "-0.03em",
           }}
         >
-          Rehearse the launch{" "}
+          One URL.{" "}
           <em
             className="italic text-[var(--accent)]"
             style={{
               fontVariationSettings: '"opsz" 144, "wght" 380, "SOFT" 90',
             }}
           >
-            before you launch
-          </em>
-          .
+            A validated GTM plan
+          </em>{" "}
+          on the other side.
         </h2>
         <p
-          className="mx-auto mb-10 max-w-[640px] text-[19px] text-[var(--ink-soft)]"
+          className="mx-auto mb-10 max-w-[620px] text-[19px] text-[var(--ink-soft)]"
           style={{ fontVariationSettings: '"wght" 400' }}
         >
-          Drop in your product URL, two competitors, and an ICP. Shadow Launch
-          will return the twin, the jury transcript, the winning wedge, the
-          creative, and the launch plan.
+          Paste the product URL. Shadow Launch runs the full pipeline — research,
+          competitors, social traction, campaign, calendar, six-persona debate —
+          and hands back a shareable results page in under ten minutes.
         </p>
 
         <InputForm />

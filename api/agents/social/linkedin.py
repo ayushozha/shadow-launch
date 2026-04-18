@@ -1,18 +1,24 @@
 """LinkedIn company scraper adapter (Stage 03).
 
-Primary actor: `apify/linkedin-company-scraper`
-Alternate:    `curious_coder/linkedin-company-scraper`
+Company details actor: `harvestapi/linkedin-company`
+Company posts actor:   `harvestapi/linkedin-company-posts`
 
-Actor input shape (approximate — ApifyRunner probes alternates on 404):
-    {"companies": ["<slug-or-url>"], "postsLimit": 30}
+Both actors are pay-per-event and work on the Free Apify plan. The company
+record comes with `followerCount` + `employeeCount`; posts come from a second
+call keyed by `targetUrls`. We fan out both calls then merge the output.
+
+Actor input shapes:
+    company:  {"companies": ["<linkedin-company-url>"]}
+    posts:    {"targetUrls": ["<linkedin-company-url>"], "maxPosts": 30}
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
-from api.apify_client import ApifyRunner, ApifyUnavailable
+from api.apify_client import ApifyRunner
 from api.models import Competitor, SocialPost, SocialSnapshot
 
 from . import compute_metrics, derive_brand_slug, pick_first, safe_int
@@ -42,81 +48,83 @@ async def scrape(
     if not handle:
         return SocialSnapshot(**snapshot_base, status="not_found", handle=None)
 
-    # LinkedIn company URL is the most reliable identifier for this actor.
+    # harvestapi's two actors accept either a slug or a full URL; we pass the
+    # canonical URL so the actor doesn't have to guess.
     company_url = f"https://www.linkedin.com/company/{handle}"
-    run_input: dict[str, Any] = {
-        "companies": [company_url],
-        "postsLimit": 30,
-        "includePosts": True,
+    company_input: dict[str, Any] = {"companies": [company_url]}
+    posts_input: dict[str, Any] = {
+        "targetUrls": [company_url],
+        "maxPosts": 30,
     }
 
-    try:
-        items = await apify.run(
-            "social_linkedin",
-            run_input,
-            actor_label=f"linkedin:{handle}",
-            stage=3,
-        )
-    except ApifyUnavailable as exc:
-        return SocialSnapshot(
-            **snapshot_base,
-            handle=handle,
-            status="error",
-            error_detail=str(exc)[:500],
-        )
-    except Exception as exc:  # noqa: BLE001
-        return SocialSnapshot(
-            **snapshot_base,
-            handle=handle,
-            status="error",
-            error_detail=f"unexpected: {exc}"[:500],
-        )
+    async def _safe_run(key: str, run_input: dict[str, Any]) -> list[dict[str, Any]]:
+        try:
+            return await apify.run(
+                key, run_input, actor_label=f"linkedin:{key}:{handle}", stage=3
+            )
+        except Exception:  # noqa: BLE001 — partial results still usable
+            return []
 
-    if not items:
-        return SocialSnapshot(**snapshot_base, handle=handle, status="not_found")
-
-    # Actor emits one company record plus optional post records, or a single
-    # company record that bundles posts under "posts"/"updates".
-    company_rec: dict[str, Any] | None = None
-    raw_posts: list[dict[str, Any]] = []
-
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if any(k in item for k in ("followersCount", "followers", "employeeCount")):
-            company_rec = item
-            nested = pick_first(item, ("posts", "updates", "recentPosts")) or []
-            if isinstance(nested, list):
-                raw_posts.extend(x for x in nested if isinstance(x, dict))
-        elif any(k in item for k in ("text", "postText", "content", "commentary")):
-            raw_posts.append(item)
-
-    # If we didn't find a company record, treat the whole list as posts.
-    if company_rec is None:
-        for item in items:
-            if isinstance(item, dict) and "text" in item:
-                raw_posts.append(item)
-
-    followers = safe_int(
-        pick_first(company_rec, ("followersCount", "followers", "followerCount"))
+    # Fan out both calls concurrently; the runner has its own semaphore so we
+    # don't need one here.
+    company_items, post_items = await asyncio.gather(
+        _safe_run("social_linkedin_company", company_input),
+        _safe_run("social_linkedin_posts", posts_input),
+        return_exceptions=False,
     )
 
-    # Normalize post shape for metric computation.
+    if not company_items and not post_items:
+        # Both failed (or both returned nothing) — surface as a clean error so
+        # the orchestrator can propagate per the no-dummy-fallback policy.
+        return SocialSnapshot(
+            **snapshot_base,
+            handle=handle,
+            status="error",
+            error_detail="linkedin: both company + posts actors returned empty",
+        )
+
+    # Normalize the company record.
+    company_rec: dict[str, Any] | None = None
+    for item in company_items:
+        if isinstance(item, dict) and any(
+            k in item for k in ("followerCount", "followersCount", "employeeCount")
+        ):
+            company_rec = item
+            break
+
+    # Normalize posts (harvestapi returns them as top-level records).
+    raw_posts: list[dict[str, Any]] = [
+        p for p in post_items if isinstance(p, dict)
+    ]
+
+    followers = safe_int(
+        pick_first(company_rec, ("followerCount", "followersCount", "followers"))
+    )
+
+    # Normalize post shape for metric computation. harvestapi emits an
+    # `engagement` subdict with `likes`, `comments`, `shares`, `reactions`.
     norm_posts = []
     for p in raw_posts:
+        eng_obj = p.get("engagement") if isinstance(p.get("engagement"), dict) else {}
         likes = safe_int(
-            pick_first(p, ("numLikes", "likes", "reactionsCount", "totalReactions", "likesCount"))
+            pick_first(eng_obj, ("likes", "reactions"))
+            or pick_first(p, ("numLikes", "likes", "reactionsCount", "totalReactions", "likesCount"))
         ) or 0
         comments = safe_int(
-            pick_first(p, ("numComments", "comments", "commentsCount"))
+            pick_first(eng_obj, ("comments",))
+            or pick_first(p, ("numComments", "comments", "commentsCount"))
         ) or 0
         shares = safe_int(
-            pick_first(p, ("numShares", "shares", "shareCount", "reposts"))
+            pick_first(eng_obj, ("shares", "reposts"))
+            or pick_first(p, ("numShares", "shares", "shareCount", "reposts"))
         ) or 0
+        # harvestapi uses `content` for the post body.
+        content = pick_first(p, ("content", "text", "postText", "commentary"))
         posted_at = pick_first(p, ("postedAt", "publishedAt", "timestamp", "date"))
         engagement = likes + 2 * comments + shares
         enriched = dict(p)
         enriched.update(
+            content=content,
             likes=likes,
             comments=comments,
             shares=shares,

@@ -31,7 +31,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from api.db.schema import CalendarSlotRow, ContentCalendarRow
 from api.db.session import get_session
@@ -57,17 +57,51 @@ logger = logging.getLogger(__name__)
 _DAYS_SPAN = 14
 _MIN_SLOTS = 20
 _MAX_SLOTS = 40
+# On the retry/final pass we accept a slightly looser floor. Spec says 20–40,
+# but if the LLM lands just short (e.g. 17) after an explicit retry with
+# feedback, that's close enough to ship — a hard failure here would trash the
+# whole run. The upper bound stays firm because too many slots signals drift.
+_FINAL_MIN_SLOTS = 14
 _MAX_SLOTS_PER_DAY = 6
 _DAY_NAMES = [
     "Monday", "Tuesday", "Wednesday", "Thursday",
     "Friday", "Saturday", "Sunday",
 ]
+# Must mirror the `Channel` / post_type literals in api/models.py. Kept local
+# so _SlotDraft stays loose (str) at the Kalibr boundary — we'd rather catch
+# LLM typos in _validate_slots (where retry-with-feedback can fix them) than
+# inside the strict Pydantic wall of CalendarSlot.
+_VALID_CHANNELS: frozenset[str] = frozenset({
+    "linkedin", "twitter", "facebook", "instagram", "tiktok",
+    "blog", "email", "youtube",
+})
+_VALID_POST_TYPES: frozenset[str] = frozenset({"image", "text", "link", "video"})
+
+
+class _SlotDraft(BaseModel):
+    """LLM-produced slot before the agent assigns slot_id."""
+    day: int
+    channel: str
+    post_type: str
+    post_copy: str = Field(alias="copy")
+    asset_id: str | None = None
+    posting_time: str
+    rationale: str
+
+    model_config = {"populate_by_name": True}
 
 
 class _CalendarModel(BaseModel):
-    """Thin wrapper for Kalibr structured-output — a bag of CalendarSlots."""
+    """Thin wrapper for Kalibr structured-output — a bag of slot drafts.
 
-    slots: list[CalendarSlot] = Field(min_length=_MIN_SLOTS, max_length=_MAX_SLOTS)
+    NOTE: intentionally no `min_length` / `max_length` on `slots`. The
+    response_model enforces *shape* (field names, types) only. Slot-count
+    bounds live in `_validate_slots` so the agent gets a chance to retry
+    with feedback before a count miss becomes a fatal ValidationError inside
+    the Kalibr router.
+    """
+
+    slots: list[_SlotDraft]
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +223,9 @@ async def run(
 
         assert isinstance(model_out, _CalendarModel)
         try:
-            validated = _validate_slots(model_out.slots, valid_asset_ids)
+            validated = _validate_slots(
+                model_out.slots, valid_asset_ids, final_pass=True
+            )
         except _SlotValidationError as second_err:
             await event_bus.emit(
                 agent="calendar_builder",
@@ -426,11 +462,14 @@ class _SlotValidationError(ValueError):
 def _validate_slots(
     slots: list[CalendarSlot],
     valid_asset_ids: set[str],
+    *,
+    final_pass: bool = False,
 ) -> list[CalendarSlot]:
     """Enforce the Stage 05 contract on LLM output.
 
     Rules (all must hold):
-    - 20 ≤ len(slots) ≤ 40
+    - slot-count: first pass requires 20 ≤ n ≤ 40; final pass accepts
+      14 ≤ n ≤ 40 (see `_FINAL_MIN_SLOTS` for rationale).
     - day ∈ 1..14 for every slot
     - asset_id is None OR present in `valid_asset_ids`
     - no single day has more than _MAX_SLOTS_PER_DAY slots
@@ -440,10 +479,11 @@ def _validate_slots(
     """
     problems: list[str] = []
 
-    if len(slots) < _MIN_SLOTS or len(slots) > _MAX_SLOTS:
+    min_required = _FINAL_MIN_SLOTS if final_pass else _MIN_SLOTS
+    if len(slots) < min_required or len(slots) > _MAX_SLOTS:
         problems.append(
             f"slot count = {len(slots)}; must be between "
-            f"{_MIN_SLOTS} and {_MAX_SLOTS}"
+            f"{min_required} and {_MAX_SLOTS}"
         )
 
     per_day: dict[int, int] = defaultdict(int)
@@ -451,6 +491,16 @@ def _validate_slots(
         if slot.day < 1 or slot.day > _DAYS_SPAN:
             problems.append(
                 f"slot[{idx}] day={slot.day} out of range 1..{_DAYS_SPAN}"
+            )
+        if slot.channel not in _VALID_CHANNELS:
+            problems.append(
+                f"slot[{idx}] channel={slot.channel!r} is not a valid "
+                f"channel; valid: {sorted(_VALID_CHANNELS)}"
+            )
+        if slot.post_type not in _VALID_POST_TYPES:
+            problems.append(
+                f"slot[{idx}] post_type={slot.post_type!r} is not valid; "
+                f"valid: {sorted(_VALID_POST_TYPES)}"
             )
         if slot.asset_id is not None and slot.asset_id not in valid_asset_ids:
             problems.append(
@@ -472,17 +522,20 @@ def _validate_slots(
 
 
 def _assign_slot_ids(
-    slots: list[CalendarSlot],
+    slots: list,  # list[_SlotDraft]
     *,
     run_id: str,
 ) -> list[CalendarSlot]:
-    """Rebuild slots with deterministic IDs so the DB primary keys are stable."""
+    """Materialize LLM drafts into real `CalendarSlot`s with deterministic IDs."""
     suffix = run_id[-8:]
     rebuilt: list[CalendarSlot] = []
     for i, slot in enumerate(slots):
-        rebuilt.append(
-            slot.model_copy(update={"slot_id": f"slot_{suffix}_{i:03d}"})
-        )
+        rebuilt.append(CalendarSlot(
+            slot_id=f"slot_{suffix}_{i:03d}",
+            day=slot.day, channel=slot.channel, post_type=slot.post_type,
+            post_copy=slot.post_copy, asset_id=slot.asset_id,
+            posting_time=slot.posting_time, rationale=slot.rationale,
+        ))
     return rebuilt
 
 

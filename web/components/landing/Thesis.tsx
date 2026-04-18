@@ -1,12 +1,12 @@
 import SectionHead from "./SectionHead";
 
 const ASIDE_ROWS: { l: string; v: string }[] = [
-  { l: "Typical ramp", v: "6 to 10 weeks" },
-  { l: "Median spend to signal", v: "$18K to $40K" },
-  { l: "Wedges tested before launch", v: "~1.3" },
-  { l: "Shadow Launch ramp", v: "under 2 hours" },
-  { l: "Wedges pressure-tested", v: "3 to 6" },
-  { l: "Cost per simulation", v: "$3 to $14" },
+  { l: "Typical GTM ramp", v: "6 to 10 weeks" },
+  { l: "Median spend to first signal", v: "$18K to $40K" },
+  { l: "Competitors analyzed manually", v: "1 to 2" },
+  { l: "Shadow Launch ramp", v: "under 10 minutes" },
+  { l: "Competitors auto-discovered", v: "5 to 8 · 25-post social sweep" },
+  { l: "Debate panel", v: "6 synthetic buyers" },
 ];
 
 export default function Thesis() {
@@ -51,19 +51,21 @@ export default function Thesis() {
             className="mb-[22px] font-serif text-[20px] leading-[1.55] text-[var(--ink-soft)]"
             style={{ fontVariationSettings: '"opsz" 14, "wght" 400, "SOFT" 40' }}
           >
-            So teams do what teams have always done. They guess. They A/B.
-            They argue in rooms. They pick a positioning on a Tuesday and pay
-            the market to tell them on a Friday that it was wrong. By then the
-            quarter is half gone and the budget is half spent.
+            So teams do what teams have always done. They guess. They pick a
+            positioning on a Tuesday and pay the market to tell them on a
+            Friday that it was wrong. They eyeball one or two competitors and
+            call it research. By then the quarter is half gone and the budget
+            is half spent.
           </p>
           <p
             className="font-serif text-[20px] leading-[1.55] text-[var(--ink-soft)]"
             style={{ fontVariationSettings: '"opsz" 14, "wght" 400, "SOFT" 40' }}
           >
-            Shadow Launch is a different premise. Build a synthetic version of
-            the market first. Rehearse the launch against it. Let the wedge
-            that works reveal itself in simulation, not in production. The
-            real launch is the encore, not the experiment.
+            Shadow Launch is a different premise. One URL in. A live map of
+            five to eight competitors, their social traction, a proposed GTM
+            campaign, a 14-day calendar — and a panel of six synthetic buyers
+            tearing every piece of it apart before a dollar ships. The real
+            launch is the encore, not the experiment.
           </p>
         </div>
 
@@ -77,7 +79,7 @@ export default function Thesis() {
                   : ""
               }`}
             >
-              <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--muted)] flex-shrink-0">
+              <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--muted)] flex-shrink-0 pr-3">
                 {row.l}
               </span>
               <span className="font-serif italic text-[18px] text-[var(--ink)] text-right">

@@ -41,10 +41,10 @@ import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .apify_client import ApifyRunner
-from .db.schema import RunRow
+from .db.schema import KalibrEventRow, RunRow, TraceEventRow
 from .db.session import get_session
 from .models import (
     Campaign,
@@ -132,34 +132,62 @@ async def _load_run_created_at(run_id: str) -> datetime:
 # ---------------------------------------------------------------------------
 
 
-def _aggregate_cost(
+async def _aggregate_cost(
     *,
+    run_id: str,
     trace: list[TraceEvent],
     kalibr_events: list[KalibrEvent],
 ) -> float:
     """Sum every dollar delta we can observe during the run.
 
-    Two parallel sources:
+    Source of truth is the DB: we SUM ``trace_events.kalibr_cost_delta_usd``
+    and ``kalibr_events.cost_usd_delta`` for this run. Both tables are
+    populated independently — text-gen routes through the bus's persist tap
+    (Kalibr router attaches cost on the success emit), image-gen writes
+    directly to ``kalibr_events`` AND emits a trace-event with the same
+    dollar figure. Summing across both tables double-counts image-gen by
+    design: see the reconciliation below.
 
-    * ``KalibrRouter.events()`` carries ``cost_usd_delta`` on each retry/
-      reroute/recover tick — this is the authoritative LLM bill.
-    * The event bus carries ``cost`` / ``cost_update`` trace events whose
-      payload exposes ``kalibr_cost_delta_usd`` directly on the model. Image
-      generation stages (Stage 04) emit through the bus, not Kalibr, so both
-      buckets must be summed to cover everything.
+    We avoid the double-count by only summing trace rows whose agent is the
+    Kalibr router itself (``agent='kalibr'``) for the trace-side total. That
+    leaves ``kalibr_events`` as the single authority for image-gen dollars,
+    while ``trace_events`` covers text-gen dollars.
 
-    Double-counting guard: trace events produced by the Kalibr router itself
-    already expose the delta field but only for the bus half of the story —
-    the Kalibr event list exists independently. Stage agents that record a
-    trace cost delta are responsible for NOT also pushing to ``kalibr.events``
-    for the same unit of work. We simply add the two sources here.
+    Fallback: if the DB is unreachable we sum the in-memory lists, which is
+    the pre-DB behaviour and keeps the run from failing over a cost-ticker
+    hiccup.
     """
+    try:
+        async with get_session() as session:
+            trace_stmt = (
+                select(func.coalesce(func.sum(TraceEventRow.kalibr_cost_delta_usd), 0.0))
+                .where(TraceEventRow.run_id == run_id)
+                .where(TraceEventRow.kalibr_cost_delta_usd.is_not(None))
+                .where(TraceEventRow.agent == "kalibr")
+            )
+            kalibr_stmt = (
+                select(func.coalesce(func.sum(KalibrEventRow.cost_usd_delta), 0.0))
+                .where(KalibrEventRow.run_id == run_id)
+                .where(KalibrEventRow.cost_usd_delta.is_not(None))
+            )
+            trace_total = float((await session.execute(trace_stmt)).scalar_one() or 0.0)
+            kalibr_total = float((await session.execute(kalibr_stmt)).scalar_one() or 0.0)
+            return trace_total + kalibr_total
+    except Exception as exc:  # noqa: BLE001 — fall back to in-memory on any DB issue
+        log.warning(
+            "cost aggregation DB query failed for run %s (%s); falling back to in-memory",
+            run_id,
+            exc,
+        )
+
     total = 0.0
     for ev in kalibr_events:
         delta = getattr(ev, "cost_usd_delta", None)
         if delta is not None:
             total += float(delta)
     for ev in trace:
+        if getattr(ev, "agent", None) != "kalibr":
+            continue
         delta = getattr(ev, "kalibr_cost_delta_usd", None)
         if delta is not None:
             total += float(delta)
@@ -382,7 +410,14 @@ async def run_pipeline(
     # ---------------- Success: aggregate + persist + emit -----------------
     trace_history = event_bus.history()
     kalibr_events = kalibr.events()
-    cost_total = _aggregate_cost(trace=trace_history, kalibr_events=kalibr_events)
+    # Give the fire-and-forget trace persistence tasks a brief window to
+    # flush before we query trace_events. Without this the final cost sum
+    # can miss the last few emits that were scheduled just before we got
+    # here. 100ms is plenty for the asyncpg writes in this demo.
+    await asyncio.sleep(0.1)
+    cost_total = await _aggregate_cost(
+        run_id=run_id, trace=trace_history, kalibr_events=kalibr_events
+    )
     capsule_id = _best_effort_capsule_id(kalibr)
 
     try:

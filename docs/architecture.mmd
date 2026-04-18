@@ -1,0 +1,117 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#ece4d2"
+    primaryTextColor: "#0c0c0a"
+    primaryBorderColor: "#0c0c0a"
+    lineColor: "#6a6454"
+    secondaryColor: "#e1d8c3"
+    tertiaryColor: "#ece4d2"
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "14px"
+---
+flowchart TB
+    USER(["User pastes<br/>product URL"])
+
+    subgraph FE["Frontend  ·  Next.js 16  ·  React 19  ·  Tailwind v4"]
+        direction LR
+        L["Landing  /"]
+        W1["1-brand"]
+        W2["2-plan"]
+        W3["3-competitors"]
+        W4["4-social"]
+        W5["5-plays"]
+        W6["6-creative"]
+        W7["7-calendar"]
+        R["Command Center<br/>/results/:id"]
+        L --> W1 --> W2 --> W3 --> W4 --> W5 --> W6 --> W7 --> R
+    end
+
+    USER --> L
+
+    L -->|"POST /api/runs"| API
+    W1 -.->|"SSE trace events"| API
+    R -->|"GET /api/runs/:id"| API
+
+    subgraph BE["Backend  ·  FastAPI  ·  Python 3.14  ·  SQLAlchemy 2 async"]
+        API["REST + SSE"]
+        ORCH["Orchestrator<br/>6 + 1 stage graph"]
+        BUS["EventBus<br/>SSE fan-out + DB tap"]
+        KR["KalibrRouter<br/>goal → path<br/>retry · reroute · cost"]
+        API --> ORCH
+        ORCH --> BUS
+        ORCH --> KR
+    end
+
+    subgraph AG["Pipeline agents  ·  parallel fan-out on 03 + 03.5"]
+        direction TB
+        A1["Stage 01<br/>product_researcher"]
+        A2["Stage 02<br/>competitor_discoverer"]
+        A3["Stage 03<br/>social_scraper<br/>→ 5 platform adapters"]
+        A35["Stage 03.5<br/>market_discourse"]
+        A4["Stage 04<br/>campaign_generator<br/>(text + images)"]
+        A5["Stage 05<br/>calendar_builder"]
+        A6["Stage 06<br/>persona_debater"]
+        A1 --> A2
+        A2 --> A3
+        A2 --> A35
+        A3 --> A4
+        A35 --> A4
+        A4 --> A5
+        A5 --> A6
+    end
+
+    ORCH --> A1
+
+    subgraph SP["Sponsor APIs"]
+        direction TB
+        APIFY["Apify Store<br/>· website-content-crawler<br/>· google-search-scraper<br/>· harvestapi/linkedin-company<br/>· kaitoeasyapi/twitter-x-...<br/>· facebook-pages-scraper<br/>· instagram-profile-scraper<br/>· clockworks/tiktok-scraper<br/>· trudax/reddit-scraper-lite<br/>· memo23/trustpilot-ppe<br/>· zen-studio/g2-reviews"]
+        OAI["OpenAI<br/>gpt-4o-mini · gpt-4o<br/>gpt-image-1"]
+        MINDS["Minds AI<br/>Sparks + Panels<br/>SSE streaming"]
+        KAL["Kalibr<br/>adaptive routing<br/>cost telemetry<br/>trace capsules"]
+    end
+
+    A1 --> APIFY
+    A2 --> APIFY
+    A3 --> APIFY
+    A35 --> APIFY
+    A4 --> OAI
+    A6 --> MINDS
+    A1 --> KR
+    A2 --> KR
+    A4 --> KR
+    A5 --> KR
+    A6 --> KR
+    KR --> KAL
+    KR --> OAI
+
+    subgraph DB["PostgreSQL 17.7  ·  postgresql.ayushojha.com  ·  14 tables"]
+        direction LR
+        T1["runs · product_profiles<br/>competitors · social_snapshots"]
+        T2["discourse_items · campaigns<br/>image_assets (bytea)"]
+        T3["content_calendars · calendar_slots"]
+        T4["persona_reactions · verdicts<br/>trace_events · kalibr_events<br/>minds_sparks"]
+    end
+
+    BUS --> T4
+    A1 --> T1
+    A2 --> T1
+    A3 --> T1
+    A35 --> T2
+    A4 --> T2
+    A5 --> T3
+    A6 --> T4
+
+    classDef user fill:#e33312,stroke:#0c0c0a,color:#ece4d2,font-weight:bold
+    classDef fe fill:#ece4d2,stroke:#0c0c0a,color:#0c0c0a
+    classDef be fill:#e1d8c3,stroke:#0c0c0a,color:#0c0c0a
+    classDef ag fill:#fff5e1,stroke:#e33312,color:#0c0c0a
+    classDef sp fill:#0c0c0a,stroke:#e33312,color:#ece4d2
+    classDef db fill:#2b6b3f,stroke:#0c0c0a,color:#ece4d2
+    class USER user
+    class L,W1,W2,W3,W4,W5,W6,W7,R fe
+    class API,ORCH,BUS,KR be
+    class A1,A2,A3,A35,A4,A5,A6 ag
+    class APIFY,OAI,MINDS,KAL sp
+    class T1,T2,T3,T4 db

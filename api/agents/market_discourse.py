@@ -119,10 +119,19 @@ async def run(
         )
 
     if reddit_err is not None and trustpilot_err is not None:
-        raise ApifyUnavailable(
-            f"market discourse: both sources failed. "
-            f"reddit={reddit_err!r} trustpilot={trustpilot_err!r}"
+        # E2E-degrade: both Apify actors unavailable (paid-rental / not-found).
+        # Emit a warn, return empty discourse so downstream stages still run.
+        await event_bus.emit(
+            agent=_AGENT,
+            message=(
+                f"both discourse sources unavailable — continuing with empty set. "
+                f"reddit={reddit_err!r} trustpilot={trustpilot_err!r}"
+            ),
+            kind="warn",
+            meta={"stage": _STAGE},
         )
+        return MarketDiscourse(run_id=run_id, reddit_items=[], trustpilot_items=[],
+                               top_complaints=[], top_desires=[])
 
     # --- Synthesis via Kalibr ------------------------------------------
     all_items = reddit_items + trustpilot_items
@@ -313,10 +322,16 @@ async def _fetch_trustpilot(
     if not review_urls:
         return []
 
+    # Primary actor `memo23/trustpilot-scraper-ppe` and fallback
+    # `getwally.net/trustpilot-reviews-scraper` both accept `startUrls` with
+    # [{url: ...}] shape — the only difference is that memo23 uses `maxItems`
+    # while getwally uses `limit`, so we ship both keys in a single input.
     primary_input = {
-        "reviewUrls": review_urls,
+        "startUrls": [{"url": u} for u in review_urls],
+        "maxItems": _MAX_TRUSTPILOT_PER_COMPETITOR,
         "limit": _MAX_TRUSTPILOT_PER_COMPETITOR,
     }
+    # Kept for back-compat with any alternate that still prefers the old keys.
     fallback_input = {
         "startUrls": [{"url": u} for u in review_urls],
         "count": _MAX_TRUSTPILOT_PER_COMPETITOR,

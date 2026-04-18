@@ -40,21 +40,37 @@ class ApifyUnavailable(RuntimeError):
 # ---------------------------------------------------------------------------
 
 
+#
+# The slugs below were smoke-tested on 2026-04-18 against a Free-tier Apify
+# account (pay-per-event pricing model). Full verification matrix lives in
+# `docs/apify-actors.md`. If you add a slug here, verify it returns real items
+# for a live target (no cached/demo rows) before committing.
+#
 ACTORS: dict[str, list[str]] = {
     # Stage 01 — product research
     "website_content": ["apify/website-content-crawler"],
     "google_serp": ["apify/google-search-scraper"],
     # Stage 02 — competitor discovery (Google SERP covers most; alternates are pluggable)
-    "product_hunt": ["jaroslavhejlek/product-hunt"],
-    "g2_reviews": ["pocesar/g2-crawler"],
+    # NOTE: No reliable free-tier ProductHunt actor found for URL-based scraping;
+    # leaving the key in the registry as a best-effort so agents that still call
+    # it surface a clean ApifyUnavailable and Google SERP covers the gap.
+    "product_hunt": ["getdataforme/product-hunt-reviews-scraper"],
+    "g2_reviews": ["zen-studio/g2-reviews-scraper"],
     # Stage 03 — social (per platform)
-    "social_linkedin": [
-        "apify/linkedin-company-scraper",
-        "curious_coder/linkedin-company-scraper",
-    ],
+    # LinkedIn company + posts split across two harvestapi actors because one
+    # returns the company record and the other returns posts. The per-platform
+    # adapter runs both keys and merges the output.
+    "social_linkedin_company": ["harvestapi/linkedin-company"],
+    "social_linkedin_posts": ["harvestapi/linkedin-company-posts"],
+    # Keep the legacy key for backwards compatibility — adapter now fans out
+    # to the two keys above, but anything that still hits `social_linkedin`
+    # will get the company record at minimum.
+    "social_linkedin": ["harvestapi/linkedin-company"],
+    # Twitter — kaitoeasyapi "cheapest" scraper is the only pay-per-event
+    # actor that returns REAL tweet content on Free-tier. apidojo/tweet-scraper
+    # ignores the free plan and returns a `{noResults: true}` placeholder.
     "social_twitter": [
-        "apidojo/twitter-scraper-lite",
-        "apify/twitter-scraper",
+        "kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest",
     ],
     "social_facebook": ["apify/facebook-pages-scraper"],
     "social_instagram": [
@@ -63,8 +79,11 @@ ACTORS: dict[str, list[str]] = {
     ],
     "social_tiktok": ["clockworks/tiktok-scraper"],
     # Stage 03.5 — market discourse
-    "reddit": ["trudax/reddit-scraper"],
-    "trustpilot": ["apify/trustpilot-scraper"],
+    "reddit": ["trudax/reddit-scraper-lite"],
+    "trustpilot": [
+        "memo23/trustpilot-scraper-ppe",
+        "getwally.net/trustpilot-reviews-scraper",
+    ],
 }
 
 

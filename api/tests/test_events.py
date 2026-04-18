@@ -12,7 +12,7 @@ from api.models import TraceEvent
 
 @pytest.mark.asyncio
 async def test_history_accumulates_trace_events() -> None:
-    bus = EventBus("run-hist")
+    bus = EventBus("run-hist", persist_to_db=False)
     await bus.emit(agent="scout", message="starting crawl")
     await bus.emit(agent="scout", message="fetched competitor A", kind="ok")
     await bus.emit(agent="cartographer", message="mapping", kind="info")
@@ -26,7 +26,7 @@ async def test_history_accumulates_trace_events() -> None:
 
 @pytest.mark.asyncio
 async def test_two_concurrent_subscribers_both_receive_all() -> None:
-    bus = EventBus("run-fanout")
+    bus = EventBus("run-fanout", persist_to_db=False)
 
     async def collect(n: int) -> list[dict]:
         out: list[dict] = []
@@ -54,7 +54,7 @@ async def test_two_concurrent_subscribers_both_receive_all() -> None:
 
 @pytest.mark.asyncio
 async def test_late_subscriber_gets_replayed_history() -> None:
-    bus = EventBus("run-replay")
+    bus = EventBus("run-replay", persist_to_db=False)
     await bus.emit(agent="scout", message="one")
     await bus.emit(agent="scout", message="two")
 
@@ -76,7 +76,7 @@ async def test_late_subscriber_gets_replayed_history() -> None:
 
 @pytest.mark.asyncio
 async def test_close_ends_open_streams_quickly() -> None:
-    bus = EventBus("run-close")
+    bus = EventBus("run-close", persist_to_db=False)
 
     async def drain() -> list[dict]:
         return [ev async for ev in bus.stream()]
@@ -93,7 +93,7 @@ async def test_close_ends_open_streams_quickly() -> None:
 
 @pytest.mark.asyncio
 async def test_emit_after_close_is_noop() -> None:
-    bus = EventBus("run-post-close")
+    bus = EventBus("run-post-close", persist_to_db=False)
     await bus.emit(agent="scout", message="pre")
     await bus.close()
     await bus.emit(agent="scout", message="post")  # should not raise
@@ -114,7 +114,7 @@ def test_registry_roundtrip() -> None:
 
 @pytest.mark.asyncio
 async def test_meta_is_folded_into_message() -> None:
-    bus = EventBus("run-meta")
+    bus = EventBus("run-meta", persist_to_db=False)
     await bus.emit(agent="kalibr", message="reroute", meta={"from": "x", "to": "y"})
     [event] = bus.history()
     assert "reroute" in event.message

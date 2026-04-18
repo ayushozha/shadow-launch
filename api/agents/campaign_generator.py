@@ -379,17 +379,21 @@ async def _generate_angle_images(
         assets.append(asset)
 
         # Mirror the cost + trace on the bus so the cost ticker picks it up
-        # even though Kalibr didn't dispatch this call itself.
+        # even though Kalibr didn't dispatch this call itself. We set the
+        # cost via the first-class `kalibr_cost_delta_usd` kwarg so the
+        # orchestrator's cost aggregator can read it directly off the
+        # trace_events row without parsing the message string.
         await event_bus.emit(
             agent="campaign_generator",
-            message=f"image ok · angle={angle.angle_id} model={_IMAGE_MODEL}",
+            message=f"image_gen +${_IMAGE_COST_USD:.2f}",
             kind="cost",
-            meta={
-                "kalibr_model": _IMAGE_MODEL,
-                "kalibr_cost_delta_usd": _IMAGE_COST_USD,
-                "goal": "image_gen",
-            },
+            kalibr_model=_IMAGE_MODEL,
+            kalibr_cost_delta_usd=_IMAGE_COST_USD,
+            meta={"goal": "image_gen", "angle_id": angle.angle_id},
         )
+        # Double-record into kalibr_events — the orchestrator de-dupes by
+        # source-of-truth query, so this is safe and keeps the per-event
+        # image-gen row available for the Kalibr capsule summary.
         await _persist_kalibr_event(run_id=run_id, cost=_IMAGE_COST_USD)
 
     return assets

@@ -2,35 +2,82 @@
 
 import type { StageMeta } from "@/lib/types";
 
-export type StageStatus = "idle" | "running" | "done";
+export type StageStatus = "pending" | "running" | "done" | "error";
 
 export interface StageCardProps {
   stage: StageMeta;
   status: StageStatus;
   summary?: string | null;
-  detail?: string | null;
+  errorMessage?: string | null;
+  kalibrModel?: string | null;
+  annotations?: string[];
 }
 
-// One card per pipeline stage. Mirrors the paper/ink vocabulary from the
-// landing readout: bordered card on paper-deep, ink header strip, mono labels,
-// and a compact summary once the stage is done.
-export default function StageCard({ stage, status, summary, detail }: StageCardProps) {
+// Single pipeline-stage readout card. Paper/ink vocabulary: bordered card,
+// ink header strip, mono labels, 1-line summary pulled from the stage's `ok`
+// trace message once done. Running state pulses. Error state shows red.
+export default function StageCard({
+  stage,
+  status,
+  summary,
+  errorMessage,
+  kalibrModel,
+  annotations,
+}: StageCardProps) {
   const statusLabel =
-    status === "done" ? "COMPLETE" : status === "running" ? "RUNNING" : "QUEUED";
+    status === "done"
+      ? "COMPLETE"
+      : status === "running"
+        ? "RUNNING"
+        : status === "error"
+          ? "ERROR"
+          : "PENDING";
 
-  const statusColor =
+  const borderClass =
+    status === "pending"
+      ? "border-dashed border-[var(--rule-soft)]"
+      : status === "error"
+        ? "border-[var(--accent)]"
+        : status === "running"
+          ? "border-[var(--rule)]"
+          : "border-[var(--rule)]";
+
+  const headerStatusColor =
     status === "done"
       ? "text-[var(--phosphor)]"
       : status === "running"
         ? "text-[var(--accent)]"
-        : "text-[var(--muted)]";
+        : status === "error"
+          ? "text-[var(--accent)]"
+          : "text-[rgba(236,228,210,0.55)]";
+
+  const headerDotClass =
+    status === "done"
+      ? "bg-[var(--phosphor)]"
+      : status === "running"
+        ? "bg-[var(--accent)] animate-pulse"
+        : status === "error"
+          ? "bg-[var(--accent)]"
+          : "bg-[rgba(236,228,210,0.35)]";
+
+  const cardOpacity = status === "pending" ? "opacity-60" : "opacity-100";
+  const runningPulse = status === "running" ? "shadow-[0_0_0_1px_var(--accent)]" : "";
+
+  const bottomBarClass =
+    status === "done"
+      ? "bg-[var(--phosphor)]"
+      : status === "running"
+        ? "bg-[var(--accent)]"
+        : status === "error"
+          ? "bg-[var(--accent)]"
+          : "bg-[var(--rule-soft)]";
 
   return (
     <article
-      className="relative border border-[var(--rule)] bg-[rgba(255,252,244,0.55)]"
+      className={`relative border bg-[rgba(255,252,244,0.55)] transition-opacity ${borderClass} ${cardOpacity} ${runningPulse}`}
       data-status={status}
     >
-      {/* Ink header strip, same treatment as .readout-header */}
+      {/* Ink header strip — stage number · agent · status */}
       <header className="flex items-center justify-between gap-3 bg-[var(--ink)] px-3.5 py-2.5 text-[var(--paper)]">
         <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.2em] uppercase">
           <span className="text-[var(--paper)]">{stage.num}</span>
@@ -38,17 +85,8 @@ export default function StageCard({ stage, status, summary, detail }: StageCardP
           <span className="text-[rgba(236,228,210,0.75)]">{stage.agent}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-block h-1.5 w-1.5 rounded-full ${
-              status === "done"
-                ? "bg-[var(--phosphor)]"
-                : status === "running"
-                  ? "bg-[var(--accent)] animate-pulse"
-                  : "bg-[rgba(236,228,210,0.35)]"
-            }`}
-            aria-hidden
-          />
-          <span className={`font-mono text-[10px] tracking-[0.2em] ${status === "done" ? "text-[var(--phosphor)]" : status === "running" ? "text-[var(--accent)]" : "text-[rgba(236,228,210,0.55)]"}`}>
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${headerDotClass}`} aria-hidden />
+          <span className={`font-mono text-[10px] tracking-[0.2em] ${headerStatusColor}`}>
             {statusLabel}
           </span>
         </div>
@@ -65,7 +103,7 @@ export default function StageCard({ stage, status, summary, detail }: StageCardP
         </div>
 
         <div className="mt-3 min-h-[44px]">
-          {status === "idle" && (
+          {status === "pending" && (
             <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
               awaiting upstream · {stage.agent}
             </p>
@@ -74,27 +112,54 @@ export default function StageCard({ stage, status, summary, detail }: StageCardP
             <div className="flex items-center gap-2">
               <RunningTicker />
               <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--ink-soft)]">
-                {stage.agent} working · {stage.sponsor.toLowerCase()}
+                {stage.agent} working…
               </p>
             </div>
           )}
-          {status === "done" && summary && (
-            <div className="space-y-1.5">
+          {status === "done" && (
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 font-mono text-[12px] text-[var(--phosphor)]" aria-hidden>
+                ✓
+              </span>
               <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--phosphor)]">
-                {summary}
+                {summary ?? "stage complete"}
               </p>
-              {detail && (
-                <p className="font-serif text-[15px] leading-snug text-[var(--ink-soft)]">
-                  {detail}
-                </p>
-              )}
             </div>
+          )}
+          {status === "error" && (
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]">
+              {errorMessage ?? "stage failed"}
+            </p>
           )}
         </div>
+
+        {annotations && annotations.length > 0 && (
+          <ul className="mt-3 space-y-1 border-t border-[var(--rule-soft)] pt-2">
+            {annotations.map((note, i) => (
+              <li
+                key={i}
+                className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--muted)]"
+              >
+                · {note}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      {/* Hair rule under the card, like the landing */}
-      <div className={`h-px ${status === "done" ? "bg-[var(--phosphor)]" : status === "running" ? "bg-[var(--accent)]" : "bg-[var(--rule-soft)]"}`} />
+      {/* Sponsor footer with model-attribution badge */}
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--rule-soft)] px-4 py-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+          {stage.sponsor}
+        </span>
+        {kalibrModel && (
+          <span className="rounded-sm border border-[var(--rule)] bg-[var(--paper-deep)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+            via {kalibrModel}
+          </span>
+        )}
+      </div>
+
+      <div className={`h-px ${bottomBarClass}`} />
     </article>
   );
 }

@@ -1,12 +1,27 @@
-kalibr
-anthropic
-openai
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-httpx
-apify-client
+# Shadow Launch v2 · backend dependencies
+# Pinned to major versions so upgrades are deliberate.
 
-# dev
-pytest
+# --- Web framework + async stack ---
+fastapi>=0.136,<1
+uvicorn[standard]>=0.44,<1
+pydantic>=2,<3
+python-dotenv>=1,<2
+httpx>=0.28,<1
+
+# --- Database layer ---
+sqlalchemy[asyncio]>=2,<3
+asyncpg>=0.29,<1
+psycopg[binary]>=3,<4           # psycopg3 driver used by alembic migrations (sync)
+alembic>=1.18,<2
+
+# --- Sponsor SDKs ---
+kalibr>=1.10,<2                 # adaptive model routing
+openai>=2.32,<3                 # gpt-4o + gpt-image-1
+apify-client>=2.5,<3            # Apify Actor invocations
+
+# --- Optional hedge ---
+anthropic>=0.96,<1              # only used if ANTHROPIC_API_KEY is set
+
+# --- Dev / test ---
+pytest>=9,<10
+pytest-asyncio>=1,<2
